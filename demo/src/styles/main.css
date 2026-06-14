@@ -1,0 +1,190 @@
+/* ============================================
+   Main Styles - Alexa Thinks Ahead 3D Demo
+   ============================================ */
+
+/* CSS Custom Properties */
+:root {
+  --color-accent: #00CAFF;
+  --color-accent-rgb: 0, 202, 255;
+  --color-bg-dark: #0d1117;
+  --color-bg-panel: rgba(13, 17, 23, 0.7);
+  --color-border: rgba(0, 202, 255, 0.15);
+  --color-text: #e6edf3;
+  --color-text-muted: #8b949e;
+  --font-family: 'Inter', sans-serif;
+  --blur-amount: 12px;
+  --border-radius: 12px;
+}
+
+/* Reset */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body */
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--color-bg-dark);
+  font-family: var(--font-family);
+  color: var(--color-text);
+  width: 100vw;
+  height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* App Container */
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 3D Scene Container */
+#3d-container {
+  position: absolute;
+  top: 0;
+  left: 30%;
+  width: 70%;
+  height: 100%;
+  z-index: 0;
+  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Full viewport when deployment phase is active */
+#3d-container.fullscreen {
+  left: 0;
+  width: 100%;
+}
+
+#3d-container canvas {
+  display: block;
+}
+
+/* Flicker Overlay for Power Cut Effect */
+#flicker-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0;
+}
+
+/* Utility Classes */
+.hidden {
+  display: none !important;
+}
+
+/* Phase Panel Base */
+.phase-panel {
+  position: fixed;
+  z-index: 10;
+  pointer-events: auto;
+  transition: opacity 0.3s ease,
+              visibility 0.3s ease,
+              transform 0.3s ease;
+}
+
+/* Phase panel hidden state - smooth transitions instead of display:none */
+.phase-panel.hidden {
+  display: block !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Learning phase slides out to the left when hidden */
+#learning-phase.hidden {
+  transform: translateX(-100%);
+}
+
+/* Deployment phase fades out when hidden */
+#deployment-phase.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 202, 255, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 202, 255, 0.5);
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 202, 255, 0.3);
+  color: var(--color-text);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+p {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+/* Form Inputs */
+input, select, textarea {
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: rgba(13, 17, 23, 0.6);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(0, 202, 255, 0.1);
+}
+
+select {
+  cursor: pointer;
+}
+
+/* Labels */
+label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

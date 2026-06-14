@@ -1,0 +1,369 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Alexa Thinks Ahead - Proactive AI-Powered Smart Home System
+  Built for HackOn with Amazon Season 6.0
+
+Globals:
+  Function:
+    Runtime: python3.10
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        DEVICE_STATE_TABLE: !Ref DeviceStateTable
+        CONTEXT_SNAPSHOT_TABLE: !Ref ContextSnapshotTable
+        TRUST_SCORE_TABLE: !Ref TrustScoreTable
+        PREFERENCE_TABLE: !Ref PreferenceTable
+        EVENT_BUS_NAME: !Ref SmartHomeEventBus
+        BEDROCK_MODEL_ID: anthropic.claude-3-sonnet-20240229-v1:0
+        BEDROCK_REGION: ap-south-1
+        LOG_LEVEL: INFO
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+Resources:
+  # =====================================================
+  # Lambda Functions
+  # =====================================================
+
+  SkillHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub alexa-thinks-ahead-skill-${Stage}
+      Handler: src/handlers/skill_handler.lambda_handler
+      MemorySize: 512
+      Timeout: 30
+      Description: Alexa Smart Home Skill handler - Discovery, Control, Query, Custom Intents
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeviceStateTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ContextSnapshotTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref TrustScoreTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0
+
+  ContextEngineFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub alexa-thinks-ahead-context-${Stage}
+      Handler: src/handlers/context_handler.lambda_handler
+      MemorySize: 1024
+      Timeout: 60
+      Description: Scheduled context fusion - ingest, fuse, detect, model, snapshot
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeviceStateTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ContextSnapshotTable
+      Events:
+        ScheduledFusion:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+            Description: Trigger context fusion cycle (30s effective via internal scheduling)
+            Enabled: true
+
+  ReasoningProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub alexa-thinks-ahead-reasoning-${Stage}
+      Handler: src/reasoning/client.lambda_handler
+      MemorySize: 2048
+      Timeout: 90
+      Description: Bedrock Claude Sonnet reasoning proxy - contextual AI inference
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ContextSnapshotTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref TrustScoreTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref PreferenceTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0
+
+  EventProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub alexa-thinks-ahead-events-${Stage}
+      Handler: src/handlers/event_handler.lambda_handler
+      MemorySize: 512
+      Timeout: 30
+      Description: EventBridge device event processor - critical event detection and pipeline routing
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeviceStateTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ContextSnapshotTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref TrustScoreTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0
+      Events:
+        SmartHomeEvents:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref SmartHomeEventBus
+            Pattern:
+              source:
+                - smart-home.device
+            Target:
+              Id: EventProcessorTarget
+
+  APIHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub alexa-thinks-ahead-api-${Stage}
+      Handler: src/handlers/api_handler.lambda_handler
+      MemorySize: 512
+      Timeout: 30
+      Description: REST API handler - device management, context, autonomy endpoints
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeviceStateTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ContextSnapshotTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TrustScoreTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref PreferenceTable
+      Events:
+        GetDevices:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartHomeApi
+            Path: /devices
+            Method: GET
+        GetDeviceState:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartHomeApi
+            Path: /devices/{id}/state
+            Method: GET
+        PostDeviceCommand:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartHomeApi
+            Path: /devices/{id}/command
+            Method: POST
+        GetContextSnapshot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartHomeApi
+            Path: /context/snapshot
+            Method: GET
+        GetContextPatterns:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartHomeApi
+            Path: /context/patterns
+            Method: GET
+        GetAutonomyTiers:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartHomeApi
+            Path: /autonomy/tiers
+            Method: GET
+        PutAutonomyTier:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SmartHomeApi
+            Path: /autonomy/tiers/{device}
+            Method: PUT
+
+  # =====================================================
+  # API Gateway
+  # =====================================================
+
+  SmartHomeApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub alexa-thinks-ahead-api-${Stage}
+      StageName: !Ref Stage
+      Description: Alexa Thinks Ahead REST API
+      Auth:
+        DefaultAuthorizer: JWTAuthorizer
+        Authorizers:
+          JWTAuthorizer:
+            AuthorizationScopes:
+              - smart-home/read
+              - smart-home/write
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${AWS::StackName}
+              audience:
+                - smart-home-client
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  # =====================================================
+  # DynamoDB Tables
+  # =====================================================
+
+  DeviceStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub alexa-thinks-ahead-device-states-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: device_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: device_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: alexa-thinks-ahead
+        - Key: Stage
+          Value: !Ref Stage
+
+  ContextSnapshotTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub alexa-thinks-ahead-context-snapshots-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: snapshot_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: snapshot_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Project
+          Value: alexa-thinks-ahead
+        - Key: Stage
+          Value: !Ref Stage
+
+  TrustScoreTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub alexa-thinks-ahead-trust-scores-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: member_category
+          AttributeType: S
+      KeySchema:
+        - AttributeName: member_category
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: alexa-thinks-ahead
+        - Key: Stage
+          Value: !Ref Stage
+
+  PreferenceTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub alexa-thinks-ahead-preferences-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: preference_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: preference_key
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: alexa-thinks-ahead
+        - Key: Stage
+          Value: !Ref Stage
+
+  # =====================================================
+  # EventBridge
+  # =====================================================
+
+  SmartHomeEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub alexa-thinks-ahead-events-${Stage}
+      Tags:
+        - Key: Project
+          Value: alexa-thinks-ahead
+        - Key: Stage
+          Value: !Ref Stage
+
+# =====================================================
+# Outputs
+# =====================================================
+
+Outputs:
+  SkillHandlerFunctionArn:
+    Description: Alexa Skill Handler Lambda ARN
+    Value: !GetAtt SkillHandlerFunction.Arn
+
+  ContextEngineFunctionArn:
+    Description: Context Engine Lambda ARN
+    Value: !GetAtt ContextEngineFunction.Arn
+
+  ReasoningProxyFunctionArn:
+    Description: Reasoning Proxy Lambda ARN
+    Value: !GetAtt ReasoningProxyFunction.Arn
+
+  EventProcessorFunctionArn:
+    Description: Event Processor Lambda ARN
+    Value: !GetAtt EventProcessorFunction.Arn
+
+  APIHandlerFunctionArn:
+    Description: API Handler Lambda ARN
+    Value: !GetAtt APIHandlerFunction.Arn
+
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${SmartHomeApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}
+
+  DeviceStateTableName:
+    Description: DynamoDB Device State table name
+    Value: !Ref DeviceStateTable
+
+  ContextSnapshotTableName:
+    Description: DynamoDB Context Snapshot table name
+    Value: !Ref ContextSnapshotTable
+
+  TrustScoreTableName:
+    Description: DynamoDB Trust Score table name
+    Value: !Ref TrustScoreTable
+
+  PreferenceTableName:
+    Description: DynamoDB Preference table name
+    Value: !Ref PreferenceTable
+
+  SmartHomeEventBusName:
+    Description: EventBridge custom event bus name
+    Value: !Ref SmartHomeEventBus

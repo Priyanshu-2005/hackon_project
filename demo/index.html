@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alexa Thinks Ahead - 3D Interactive Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles/main.css" />
+  <link rel="stylesheet" href="/src/styles/glassmorphism.css" />
+  <link rel="stylesheet" href="/src/styles/panels.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 3D Scene Container -->
+    <div id="3d-container"></div>
+
+    <!-- Flicker Overlay for Power Cut Effect -->
+    <div id="flicker-overlay"></div>
+
+    <!-- Learning Phase Panel -->
+    <div id="learning-phase" class="phase-panel">
+      <div class="panel-content glass-panel">
+        <h2>Learning Phase</h2>
+        <div id="event-form"></div>
+        <div id="event-list"></div>
+        <button id="deploy-btn" class="btn-deploy">Deploy →</button>
+      </div>
+    </div>
+
+    <!-- Deployment Phase Panel -->
+    <div id="deployment-phase" class="phase-panel hidden">
+      <!-- Timeline Scrubber (bottom) -->
+      <div id="timeline-panel" class="glass-panel"></div>
+
+      <!-- Event Log Sidebar (right) -->
+      <div id="event-log-panel" class="glass-panel"></div>
+
+      <!-- Trust Gauges Overlay -->
+      <div id="trust-gauges" class="glass-panel"></div>
+
+      <!-- Speed Controls -->
+      <div id="speed-controls"></div>
+    </div>
+
+    <!-- Reasoning Panel (Power Cut Overlay) -->
+    <div id="reasoning-panel" class="glass-panel hidden"></div>
+
+    <!-- Data Mode Toggle -->
+    <div id="data-toggle" class="glass-panel"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
