@@ -242,29 +242,29 @@ describe('DeploymentPanel', () => {
     });
   });
 
-  describe('renderSpeedControls()', () => {
-    it('renders 4 speed buttons into #speed-controls container', () => {
-      const container = document.getElementById('speed-controls');
+  describe('speed controls', () => {
+    it('renders 4 speed buttons in the timeline panel', () => {
+      const container = document.getElementById('timeline-panel');
       const buttons = container.querySelectorAll('.speed-btn');
       expect(buttons.length).toBe(4);
     });
 
     it('renders speed buttons with correct data-speed attributes', () => {
-      const container = document.getElementById('speed-controls');
+      const container = document.getElementById('timeline-panel');
       const buttons = container.querySelectorAll('.speed-btn');
       const speeds = Array.from(buttons).map((b) => b.getAttribute('data-speed'));
       expect(speeds).toEqual(['1', '10', '60', '120']);
     });
 
-    it('has 60x active by default in #speed-controls', () => {
-      const container = document.getElementById('speed-controls');
+    it('has 60x active by default', () => {
+      const container = document.getElementById('timeline-panel');
       const activeBtn = container.querySelector('.speed-btn.active');
       expect(activeBtn).not.toBeNull();
       expect(activeBtn.getAttribute('data-speed')).toBe('60');
     });
   });
 
-  describe('renderPowerCutButton()', () => {
+  describe('power cut button', () => {
     it('renders the Power Cut button with correct id', () => {
       const btn = document.getElementById('power-cut-btn');
       expect(btn).not.toBeNull();
@@ -275,9 +275,9 @@ describe('DeploymentPanel', () => {
       expect(btn.textContent).toBe('⚡ Power Cut');
     });
 
-    it('has fixed positioning style', () => {
+    it('lives inside the timeline panel', () => {
       const btn = document.getElementById('power-cut-btn');
-      expect(btn.style.position).toBe('fixed');
+      expect(btn.closest('#timeline-panel')).not.toBeNull();
     });
 
     it('has aria-label for accessibility', () => {
@@ -286,7 +286,7 @@ describe('DeploymentPanel', () => {
     });
 
     it('does not create duplicate buttons on re-render', () => {
-      // Creating another panel should not add a second button
+      // Creating another panel re-renders the timeline; still one button
       new DeploymentPanel(mockUIManager, mockSimulation);
       const buttons = document.querySelectorAll('#power-cut-btn');
       expect(buttons.length).toBe(1);

@@ -1,20 +1,12 @@
 /**
- * Alexa Thinks Ahead — 3D Interactive Demo
+ * Alexa Thinks Ahead — 2D Interactive Demo
  * Entry point: bootstraps all modules, wires connections, and starts the app.
  *
  * Requirements: 3.3, 7.1, 8.2
  */
 
-// ─── Scene Modules ───────────────────────────────────────────────
-import * as THREE from 'three';
-import { SceneManager } from './scene/SceneManager.js';
-import { HouseBuilder } from './scene/HouseBuilder.js';
-import { DeviceIndicators } from './scene/DeviceIndicators.js';
-import { LightingSystem } from './scene/LightingSystem.js';
-import { AvatarManager } from './scene/AvatarManager.js';
-import { SpeechBubbleManager } from './scene/SpeechBubble.js';
-import { Effects } from './scene/Effects.js';
-import { ROOM_DEFINITIONS } from './scene/RoomDefinitions.js';
+// ─── Scene Module (2D Floor Plan) ────────────────────────────────
+import { FloorPlan2D } from './scene/FloorPlan2D.js';
 
 // ─── Simulation Modules ──────────────────────────────────────────
 import { SimulationEngine } from './simulation/SimulationEngine.js';
@@ -46,36 +38,8 @@ const simulationEngine = new SimulationEngine();
 const stateStore = new StateStore();
 const dataLayer = new DataLayer();
 
-// --- 3D Scene setup ---
-const sceneManager = new SceneManager();
-sceneManager.init(document.getElementById('3d-container'));
-
-// Force a resize to ensure the renderer matches the actual container dimensions
-setTimeout(() => sceneManager._onResize(), 100);
-
-// Set scene background and lighting for visibility
-sceneManager.scene.background = new THREE.Color(0x1a1a2e);
-
-// Add a grid helper for visual reference (debugging aid)
-const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
-gridHelper.position.y = -0.01; // Slightly below floor to avoid z-fighting
-sceneManager.scene.add(gridHelper);
-
-// Add hemisphere light for ambient fill (ensures house is always somewhat visible)
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-hemiLight.position.set(0, 20, 0);
-sceneManager.scene.add(hemiLight);
-
-const houseBuilder = new HouseBuilder(sceneManager.scene);
-const houseGroup = houseBuilder.build();
-
-const deviceIndicators = new DeviceIndicators(sceneManager.scene, ROOM_DEFINITIONS);
-const lightingSystem = new LightingSystem(sceneManager.scene);
-// Initialize lighting to daytime (noon) so the house is visible on load
-lightingSystem.updateForTime(720);
-const avatarManager = new AvatarManager(sceneManager.scene);
-const speechBubbleManager = new SpeechBubbleManager(sceneManager.scene);
-const effects = new Effects(sceneManager.scene, deviceIndicators);
+// --- 2D Floor Plan setup ---
+const floorPlan = new FloorPlan2D(document.getElementById('3d-container'));
 
 // --- UI setup ---
 const uiManager = new UIManager(stateStore, simulationEngine);
@@ -92,29 +56,114 @@ eventScheduler.loadActions(PROACTIVE_ACTIONS);
 const reasoningPanel = new ReasoningPanel();
 
 // --- Power Cut Scenario ---
+// FloorPlan2D exposes the same interface as Effects + SpeechBubbleManager + DeviceIndicators
 const powerCutScenario = new PowerCutScenario(
-  effects,
-  speechBubbleManager,
+  floorPlan,        // effects (has highlightDevice, powerCutFlicker, inverterGlow, dimRooms, restoreRooms)
+  floorPlan,        // speechBubbles (has show → we adapt below)
   stateStore,
   eventBus,
   reasoningPanel,
-  deviceIndicators
+  floorPlan          // deviceIndicators (has getDevicePosition, getMesh)
 );
+
+// Monkey-patch speechBubbles.show to use floorPlan.showSpeechBubble
+// PowerCutScenario calls: this.speechBubbles.show(position, text, duration)
+// FloorPlan2D expects: showSpeechBubble(deviceId, text, duration)
+// We provide a compatibility adapter:
+const originalTrigger = powerCutScenario.trigger.bind(powerCutScenario);
+powerCutScenario._originalSpeechBubblesShow = powerCutScenario.speechBubbles.show;
+
+// Override the _executeExplain to use device-based speech bubbles
+const originalExplain = powerCutScenario._executeExplain.bind(powerCutScenario);
+powerCutScenario._executeExplain = function (currentTimeMinutes) {
+  // Speech bubble at study_room echo for Arjun
+  floorPlan.showSpeechBubble(
+    'echo_study',
+    "Power cut detected. Your study room is on backup power — your class won't be interrupted, Arjun.",
+    6000
+  );
+
+  // Speech bubble at living_room echo for Dadaji
+  floorPlan.showSpeechBubble(
+    'echo_living',
+    "Don't worry, Dadaji. Living room lights and fan are running on inverter.",
+    6000
+  );
+
+  // Speech bubble at kitchen for Priya
+  floorPlan.showSpeechBubble(
+    'kitchen_hub',
+    "Priya, I've paused the kitchen hub to conserve inverter. Estimated backup: 2.5 hours.",
+    6000
+  );
+
+  // Log EXPLAIN stage
+  this.stateStore.addEventLogEntry({
+    time: currentTimeMinutes,
+    action: 'Power Cut - EXPLAIN',
+    device: 'echo_devices',
+    reasoning: 'Announcing status to all family members.',
+    type: 'power_cut',
+    stage: 'EXPLAIN',
+  });
+};
+
+// Override _executeAct to use FloorPlan2D methods
+const originalAct = powerCutScenario._executeAct.bind(powerCutScenario);
+powerCutScenario._executeAct = function (currentTimeMinutes) {
+  // Visual: Inverter glow (green)
+  floorPlan.inverterGlow('inverter_ups');
+
+  // Visual: Dim all rooms except study_room and living_room
+  floorPlan.dimRooms(['study_room', 'living_room']);
+
+  // Log ACT stage
+  this.stateStore.addEventLogEntry({
+    time: currentTimeMinutes,
+    action: 'Power Cut - ACT',
+    device: 'inverter_ups',
+    reasoning: 'AC OFF, Geyser OFF, Study lights → battery mode',
+    type: 'power_cut',
+    stage: 'ACT',
+  });
+};
+
+// Override restore to use FloorPlan2D
+const originalRestore = powerCutScenario.restore.bind(powerCutScenario);
+powerCutScenario.restore = function () {
+  // Clear any pending timers
+  this.activeTimers.forEach((timer) => clearTimeout(timer));
+  this.activeTimers = [];
+
+  if (this._autoRestoreTimer !== null) {
+    clearTimeout(this._autoRestoreTimer);
+    this._autoRestoreTimer = null;
+  }
+
+  // Restore all room lighting effects
+  floorPlan.restoreAll();
+
+  // Hide reasoning panel
+  this.reasoningPanel.hide();
+
+  // Emit power restore event
+  this.eventBus.emit(EVENTS.POWER_RESTORE, {});
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // Wire Connections
 // ═══════════════════════════════════════════════════════════════════
 
-// 1. Simulation tick → LightingSystem + AvatarManager
+// 1. Simulation tick → Floor Plan updates
 simulationEngine.onTick((timeMinutes) => {
-  lightingSystem.updateForTime(timeMinutes);
-  avatarManager.updatePositions(timeMinutes);
+  floorPlan.updateAvatars(timeMinutes);
+  floorPlan.updateLighting(timeMinutes);
 });
 
-// 2. Proactive action events → Effects highlight + SpeechBubble announcements
+// 2. Proactive action events → FloorPlan highlight + speech bubbles
 eventBus.on(EVENTS.PROACTIVE_ACTION, (payload) => {
   // Highlight the target device with a glow pulse
-  effects.highlightDevice(payload.targetDevice);
+  floorPlan.highlightDevice(payload.targetDevice);
 
   // Show speech bubble with the action's announcement
   const announcement = payload.announcement;
@@ -122,12 +171,7 @@ eventBus.on(EVENTS.PROACTIVE_ACTION, (payload) => {
     ? announcement.parent || announcement.elder || announcement.child || payload.name
     : payload.name;
 
-  // Get device position for the speech bubble
-  const position = deviceIndicators.getDevicePosition(payload.targetDevice);
-  if (position) {
-    position.y += 1.0; // Offset above the device
-    speechBubbleManager.show(position, text, 5000);
-  }
+  floorPlan.showSpeechBubble(payload.targetDevice, text, 5000);
 });
 
 // 3. Data mode toggle button
@@ -151,18 +195,12 @@ if (dataToggleContainer) {
   });
 }
 
-// 4. Power Cut button — wired into the deployment phase
-const timelinePanel = document.getElementById('timeline-panel');
-if (timelinePanel) {
-  const powerCutBtn = document.createElement('button');
-  powerCutBtn.id = 'power-cut-btn';
-  powerCutBtn.className = 'btn-accent power-cut-btn';
-  powerCutBtn.textContent = '⚡ Power Cut';
-  powerCutBtn.title = 'Simulate a power cut scenario';
+// 4. Power Cut button — wire the button rendered inside the timeline panel
+const powerCutBtn = document.getElementById('power-cut-btn');
+if (powerCutBtn) {
   powerCutBtn.addEventListener('click', () => {
     powerCutScenario.trigger(simulationEngine.currentTimeMinutes);
   });
-  timelinePanel.appendChild(powerCutBtn);
 }
 
 // 5. Initialize trust gauges with mock data
@@ -177,4 +215,9 @@ dataLayer.getAutonomyTiers().then((tiersData) => {
 // ═══════════════════════════════════════════════════════════════════
 // Ready
 // ═══════════════════════════════════════════════════════════════════
-console.log('Alexa Thinks Ahead 3D Demo — all modules wired and ready.');
+console.log('Alexa Thinks Ahead 2D Demo — all modules wired and ready.');
+
+// Suppress unused variable warnings — these modules self-register via constructors
+void learningPanel;
+void deploymentPanel;
+void eventLog;

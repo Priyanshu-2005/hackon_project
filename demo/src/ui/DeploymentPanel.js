@@ -25,8 +25,6 @@ export class DeploymentPanel {
     this.isPlaying = true;
 
     this.render();
-    this.renderSpeedControls();
-    this.renderPowerCutButton();
     this.bindPlayPause();
     this.bindSpeedControls();
     this.bindTimeline();
@@ -53,14 +51,16 @@ export class DeploymentPanel {
 
     container.innerHTML = `
       <div class="timeline-controls">
-        <button id="play-pause-btn" class="btn-accent" aria-label="Pause simulation">⏸</button>
-        <span id="time-display">00:00</span>
+        <button id="play-pause-btn" class="btn-accent timeline-play-btn" aria-label="Pause simulation">⏸</button>
+        <span id="time-display" class="time-display">00:00</span>
         <div class="speed-controls-group">
+          <span class="speed-label">Speed</span>
           <button class="speed-btn" data-speed="1">1x</button>
           <button class="speed-btn" data-speed="10">10x</button>
           <button class="speed-btn active" data-speed="60">60x</button>
           <button class="speed-btn" data-speed="120">120x</button>
         </div>
+        <button id="power-cut-btn" class="btn-power-cut" aria-label="Trigger power cut scenario">⚡ Power Cut</button>
       </div>
       <div class="timeline-scrubber-wrapper">
         <input type="range" id="timeline-scrubber" min="0" max="1439" step="1" value="0" class="timeline-scrubber" aria-label="Timeline scrubber" />
@@ -77,47 +77,20 @@ export class DeploymentPanel {
   }
 
   /**
-   * Render speed control buttons into the #speed-controls container.
-   * Provides a duplicate set of speed buttons in the separate container
-   * as specified by the layout (floating above the timeline).
+   * @deprecated Speed controls are now rendered inside the timeline panel.
+   * Kept as a no-op for backward compatibility.
    */
   renderSpeedControls() {
     const container = document.getElementById('speed-controls');
-    if (!container) return;
-
-    container.innerHTML = `
-      <button class="speed-btn" data-speed="1">1x</button>
-      <button class="speed-btn" data-speed="10">10x</button>
-      <button class="speed-btn active" data-speed="60">60x</button>
-      <button class="speed-btn" data-speed="120">120x</button>
-    `;
+    if (container) container.innerHTML = '';
   }
 
   /**
-   * Render the "⚡ Power Cut" presentation button in a floating position.
-   * The actual handler will be wired in the integration step.
+   * @deprecated Power cut button is now rendered inside the timeline panel
+   * and wired in main.js. Kept as a no-op for backward compatibility.
    */
   renderPowerCutButton() {
-    // Check if button already exists
-    if (document.getElementById('power-cut-btn')) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'power-cut-btn';
-    btn.className = 'btn-accent btn-icon power-cut-floating';
-    btn.setAttribute('aria-label', 'Trigger power cut scenario');
-    btn.textContent = '⚡ Power Cut';
-    btn.style.cssText = `
-      position: fixed;
-      bottom: 6.5rem;
-      right: 1.5rem;
-      z-index: 25;
-      padding: 0.5rem 1rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-    `;
-
-    document.body.appendChild(btn);
+    /* no-op */
   }
 
   /**

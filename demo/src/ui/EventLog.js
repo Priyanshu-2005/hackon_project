@@ -44,11 +44,36 @@ export class EventLog {
     this.container.innerHTML = `
       <div class="event-log-header">
         <h3 class="event-log-title">📋 Event Log</h3>
+        <button class="event-log-close" aria-label="Close event log" title="Hide event log">✕</button>
       </div>
       <div id="event-log-entries" class="event-log-entries"></div>
     `;
 
     this.entriesContainer = this.container.querySelector('#event-log-entries');
+
+    // Wire the close button to hide the panel
+    const closeBtn = this.container.querySelector('.event-log-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.hide());
+    }
+  }
+
+  /**
+   * Hide the event log panel.
+   */
+  hide() {
+    if (this.container) {
+      this.container.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Show the event log panel.
+   */
+  show() {
+    if (this.container) {
+      this.container.classList.remove('hidden');
+    }
   }
 
   /**

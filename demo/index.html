@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alexa Thinks Ahead - 3D Interactive Demo</title>
+  <title>Alexa Thinks Ahead - Interactive Smart Home Demo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -22,7 +22,13 @@
     <!-- Learning Phase Panel -->
     <div id="learning-phase" class="phase-panel">
       <div class="panel-content glass-panel">
-        <h2>Learning Phase</h2>
+        <div class="brand-header">
+          <span class="brand-badge">●</span>
+          <div>
+            <div class="brand-title">Alexa Thinks Ahead</div>
+            <div class="brand-subtitle">Learning Phase</div>
+          </div>
+        </div>
         <div id="event-form"></div>
         <div id="event-list"></div>
         <button id="deploy-btn" class="btn-deploy">Deploy →</button>
@@ -39,9 +45,6 @@
 
       <!-- Trust Gauges Overlay -->
       <div id="trust-gauges" class="glass-panel"></div>
-
-      <!-- Speed Controls -->
-      <div id="speed-controls"></div>
     </div>
 
     <!-- Reasoning Panel (Power Cut Overlay) -->

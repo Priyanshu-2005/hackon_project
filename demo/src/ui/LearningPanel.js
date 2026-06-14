@@ -140,29 +140,41 @@ export class LearningPanel {
 
     formEl.innerHTML = `
       <div class="learning-panel-header">
-        <h3>📋 Configure Household Events</h3>
+        <h3>Configure Household Events</h3>
         <p id="routine-counter" class="routine-counter">Alexa has learned ${this.events.length} routines for ${uniqueMembers} family members</p>
       </div>
       <form id="add-event-form" class="event-form">
         <div class="form-row">
-          <select name="member" required aria-label="Family member">
-            <option value="">Family Member...</option>
-            ${FAMILY_MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('')}
-          </select>
-          <select name="eventType" required aria-label="Event type">
-            <option value="">Event Type...</option>
-            ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
-          </select>
+          <div class="field-group">
+            <label class="field-label">Family Member</label>
+            <select name="member" required aria-label="Family member">
+              <option value="">Select...</option>
+              ${FAMILY_MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Event Type</label>
+            <select name="eventType" required aria-label="Event type">
+              <option value="">Select...</option>
+              ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+            </select>
+          </div>
         </div>
         <div class="form-row">
-          <input type="time" name="time" required aria-label="Event time" />
-          <select name="room" required aria-label="Room">
-            <option value="">Room...</option>
-            ${ROOMS.map(r => `<option value="${r}">${r}</option>`).join('')}
-          </select>
+          <div class="field-group">
+            <label class="field-label">Time</label>
+            <input type="time" name="time" required aria-label="Event time" value="07:00" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Room</label>
+            <select name="room" required aria-label="Room">
+              <option value="">Select...</option>
+              ${ROOMS.map(r => `<option value="${r}">${r}</option>`).join('')}
+            </select>
+          </div>
         </div>
         <div class="form-row devices-row">
-          <label class="devices-label">Devices:</label>
+          <label class="devices-label">Devices Involved</label>
           <div class="devices-checkboxes">
             ${DEVICES.map(d => `
               <label class="device-checkbox">
