@@ -50,6 +50,9 @@ const dataLayer = new DataLayer();
 const sceneManager = new SceneManager();
 sceneManager.init(document.getElementById('3d-container'));
 
+// Force a resize to ensure the renderer matches the actual container dimensions
+setTimeout(() => sceneManager._onResize(), 100);
+
 // Set scene background and lighting for visibility
 sceneManager.scene.background = new THREE.Color(0x1a1a2e);
 
