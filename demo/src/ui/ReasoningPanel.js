@@ -19,74 +19,66 @@ export class ReasoningPanel {
       this.panel.className = 'reasoning-panel hidden';
       document.body.appendChild(this.panel);
     }
+    /** @type {number|null} Auto-hide timer ID */
+    this._autoHideTimer = null;
   }
 
   /**
-   * Show the reasoning overlay with structured data.
-   * @param {object} reasoningData
-   * @param {string} reasoningData.title - Scenario title (e.g. "Power Cut Detected")
-   * @param {string[]} reasoningData.context - Context observations (who's home, activities)
-   * @param {object} reasoningData.prioritization - Devices kept on vs shed
-   * @param {string[]} reasoningData.prioritization.keepOn - Devices/rooms to keep powered
-   * @param {string[]} reasoningData.prioritization.shed - Devices/rooms to power down
-   * @param {string} reasoningData.estimatedDuration - Human-readable duration estimate
+   * Show the reasoning panel with arbitrary HTML content.
+   * Removes the 'hidden' class and sets innerHTML with glassmorphism content.
+   * @param {string} content - HTML string to display inside the panel
    */
-  show(reasoningData) {
-    const { title, context, prioritization, estimatedDuration } = reasoningData;
+  show(content) {
+    this._clearAutoHideTimer();
+    this.panel.innerHTML = `<div class="reasoning-content glass-panel">${content}</div>`;
+    this.panel.classList.remove('hidden');
+  }
 
-    const contextItems = (context || [])
-      .map((item) => `<li>${item}</li>`)
-      .join('');
+  /**
+   * Hide the reasoning panel by adding the 'hidden' class.
+   */
+  hide() {
+    this._clearAutoHideTimer();
+    this.panel.classList.add('hidden');
+  }
 
-    const keepOnItems = (prioritization?.keepOn || [])
-      .map((item) => `<li class="reasoning-keep">✅ ${item}</li>`)
-      .join('');
-
-    const shedItems = (prioritization?.shed || [])
-      .map((item) => `<li class="reasoning-shed">❌ ${item}</li>`)
-      .join('');
-
-    this.panel.innerHTML = `
-      <div class="reasoning-content glass-panel">
-        <div class="reasoning-header">
-          <span class="reasoning-icon">🧠</span>
-          <h3 class="reasoning-title">${title || 'Alexa is Thinking...'}</h3>
-        </div>
-        <div class="reasoning-stage-label">THINK</div>
-        <div class="reasoning-section">
-          <h4>Context Awareness</h4>
-          <ul class="reasoning-context-list">${contextItems}</ul>
-        </div>
-        <div class="reasoning-section">
-          <h4>Prioritization</h4>
-          <div class="reasoning-priority-grid">
-            <div class="reasoning-priority-col">
-              <span class="reasoning-col-label">Keep On (Inverter)</span>
-              <ul>${keepOnItems}</ul>
-            </div>
-            <div class="reasoning-priority-col">
-              <span class="reasoning-col-label">Shed (Save Power)</span>
-              <ul>${shedItems}</ul>
-            </div>
-          </div>
-        </div>
-        ${estimatedDuration ? `
-        <div class="reasoning-section reasoning-duration">
-          <span>⏱️ Estimated backup duration: <strong>${estimatedDuration}</strong></span>
-        </div>
-        ` : ''}
+  /**
+   * Show a formatted reasoning panel specific to the Power Cut scenario,
+   * displaying the full SENSE-THINK-ACT-EXPLAIN reasoning chain.
+   *
+   * Auto-hides after 15 seconds.
+   *
+   * @param {string[]} prioritizedRooms - Array of room names that are prioritized
+   */
+  showPowerCutReasoning(prioritizedRooms) {
+    const content = `
+      <h3>⚡ Power Cut — Alexa's Reasoning</h3>
+      <div class="reasoning-steps">
+        <p>🧠 <strong>SENSE:</strong> Power grid failure detected. Arjun in online class. Battery 80%.</p>
+        <p>🧠 <strong>THINK:</strong> Priority = Wi-Fi + Study Room. Shed AC + Geyser.</p>
+        <p>⚡ <strong>ACT:</strong> AC OFF, Geyser OFF, Study lights → battery mode</p>
+        <p>💬 <strong>EXPLAIN:</strong> Announcing to family...</p>
+        <p><strong>Prioritized Rooms:</strong> ${prioritizedRooms.join(', ')}</p>
+        <p><strong>Estimated backup:</strong> 2.5 hours at current load</p>
       </div>
     `;
 
-    this.panel.classList.remove('hidden');
-    this.panel.classList.add('visible');
+    this.show(content);
+
+    // Auto-hide after 15 seconds
+    this._autoHideTimer = setTimeout(() => {
+      this.hide();
+    }, 15000);
   }
 
   /**
-   * Hide the reasoning panel.
+   * Clear the auto-hide timer if active.
+   * @private
    */
-  hide() {
-    this.panel.classList.remove('visible');
-    this.panel.classList.add('hidden');
+  _clearAutoHideTimer() {
+    if (this._autoHideTimer !== null) {
+      clearTimeout(this._autoHideTimer);
+      this._autoHideTimer = null;
+    }
   }
 }

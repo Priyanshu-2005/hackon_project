@@ -32,6 +32,7 @@ import { LearningPanel } from './ui/LearningPanel.js';
 import { DeploymentPanel } from './ui/DeploymentPanel.js';
 import { EventLog } from './ui/EventLog.js';
 import { TrustGauges } from './ui/TrustGauges.js';
+import { ReasoningPanel } from './ui/ReasoningPanel.js';
 
 // ─── Utilities ───────────────────────────────────────────────────
 import { eventBus, EVENTS } from './utils/eventBus.js';
@@ -52,8 +53,13 @@ sceneManager.init(document.getElementById('3d-container'));
 // Set scene background and lighting for visibility
 sceneManager.scene.background = new THREE.Color(0x1a1a2e);
 
+// Add a grid helper for visual reference (debugging aid)
+const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+gridHelper.position.y = -0.01; // Slightly below floor to avoid z-fighting
+sceneManager.scene.add(gridHelper);
+
 // Add hemisphere light for ambient fill (ensures house is always somewhat visible)
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.3);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
 hemiLight.position.set(0, 20, 0);
 sceneManager.scene.add(hemiLight);
 
@@ -79,11 +85,16 @@ const trustGauges = new TrustGauges(stateStore);
 const eventScheduler = new EventScheduler(simulationEngine, stateStore);
 eventScheduler.loadActions(PROACTIVE_ACTIONS);
 
+// --- Reasoning Panel ---
+const reasoningPanel = new ReasoningPanel();
+
 // --- Power Cut Scenario ---
 const powerCutScenario = new PowerCutScenario(
   effects,
   speechBubbleManager,
   stateStore,
+  eventBus,
+  reasoningPanel,
   deviceIndicators
 );
 
@@ -153,7 +164,11 @@ if (timelinePanel) {
 
 // 5. Initialize trust gauges with mock data
 dataLayer.getAutonomyTiers().then((tiersData) => {
-  trustGauges.initializeFromData(tiersData);
+  if (trustGauges.initializeFromData) {
+    trustGauges.initializeFromData(tiersData);
+  }
+}).catch((err) => {
+  console.warn('Failed to initialize trust gauges:', err);
 });
 
 // ═══════════════════════════════════════════════════════════════════

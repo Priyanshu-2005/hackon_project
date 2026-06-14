@@ -8,6 +8,7 @@ import { EventLog } from './EventLog.js';
 class MockStateStore {
   constructor() {
     this.listeners = new Map();
+    this.trustUpdates = [];
   }
   on(key, cb) {
     if (!this.listeners.has(key)) this.listeners.set(key, new Set());
@@ -16,6 +17,9 @@ class MockStateStore {
   emit(key, data) {
     const cbs = this.listeners.get(key);
     if (cbs) cbs.forEach(cb => cb(data));
+  }
+  updateTrustScore(category, delta) {
+    this.trustUpdates.push({ category, delta });
   }
 }
 
@@ -52,8 +56,8 @@ describe('EventLog', () => {
     expect(entry.querySelector('.event-log-time').textContent).toBe('[06:15]');
     expect(entry.querySelector('.event-log-action-name').textContent).toBe('Geyser Pre-heat');
     expect(entry.querySelector('.event-log-emoji').textContent).toBe('🔥');
-    expect(entry.querySelector('.event-log-device').textContent).toBe('Smart Geyser');
-    expect(entry.querySelector('.event-log-reasoning').textContent).toBe('Pre-heating water 45 minutes ahead.');
+    expect(entry.querySelector('.event-log-device').textContent).toBe('→ Smart Geyser');
+    expect(entry.querySelector('.event-log-reasoning').textContent).toBe('→ Reason: Pre-heating water 45 minutes ahead.');
   });
 
   it('should display correct emojis for each action type', () => {
@@ -63,7 +67,7 @@ describe('EventLog', () => {
       { type: 'security_arm', emoji: '🔒' },
       { type: 'energy_optimization', emoji: '⚡' },
       { type: 'comfort_lighting', emoji: '💡' },
-      { type: 'power_cut', emoji: '🧠' },
+      { type: 'power_cut', emoji: '⚠️' },
     ];
 
     types.forEach(({ type, emoji }) => {
@@ -187,5 +191,97 @@ describe('EventLog', () => {
 
     const emoji = document.querySelector('.event-log-emoji');
     expect(emoji.textContent).toBe('🔔');
+  });
+
+  it('should render type/tier badge with Alexa blue styling', () => {
+    stateStore.emit('eventlog', {
+      time: 600,
+      action: 'Pre-cooling',
+      device: 'Living Room AC',
+      reasoning: 'Scheduled cooling',
+      type: 'ac_precool',
+      tier: 3,
+    });
+
+    const badge = document.querySelector('.event-log-type-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toContain('Ac Precool');
+    expect(badge.textContent).toContain('Tier 3');
+  });
+
+  it('should render Override button on each entry', () => {
+    stateStore.emit('eventlog', {
+      time: 600,
+      action: 'Pre-cooling',
+      device: 'Living Room AC',
+      reasoning: 'Scheduled cooling',
+      type: 'ac_precool',
+    });
+
+    const btn = document.querySelector('.event-log-override-btn');
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toBe('Override');
+  });
+
+  it('should apply strikethrough and reduce trust on Override click', () => {
+    stateStore.emit('eventlog', {
+      time: 600,
+      action: 'Pre-cooling',
+      device: 'Living Room AC',
+      reasoning: 'Scheduled cooling',
+      type: 'ac_precool',
+      category: 'climate',
+    });
+
+    const btn = document.querySelector('.event-log-override-btn');
+    btn.click();
+
+    const entry = document.querySelector('.event-log-entry');
+    expect(entry.classList.contains('event-log-entry--overridden')).toBe(true);
+    expect(stateStore.trustUpdates.length).toBe(1);
+    expect(stateStore.trustUpdates[0]).toEqual({ category: 'climate', delta: -15 });
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toBe('Overridden');
+  });
+
+  it('should derive category from type when category not provided', () => {
+    stateStore.emit('eventlog', {
+      time: 600,
+      action: 'Security Arm',
+      device: 'Smart Lock',
+      reasoning: 'Arming all locks',
+      type: 'security_arm',
+    });
+
+    const btn = document.querySelector('.event-log-override-btn');
+    btn.click();
+
+    expect(stateStore.trustUpdates[0].category).toBe('security');
+  });
+
+  it('should render device with arrow prefix', () => {
+    stateStore.emit('eventlog', {
+      time: 600,
+      action: 'Pre-cooling',
+      device: 'Living Room AC set to 24°C',
+      reasoning: 'Hot afternoon predicted',
+      type: 'ac_precool',
+    });
+
+    const device = document.querySelector('.event-log-device');
+    expect(device.textContent).toBe('→ Living Room AC set to 24°C');
+  });
+
+  it('should render reasoning with Reason prefix', () => {
+    stateStore.emit('eventlog', {
+      time: 600,
+      action: 'Pre-cooling',
+      device: 'Living Room AC',
+      reasoning: 'Hot afternoon predicted',
+      type: 'ac_precool',
+    });
+
+    const reasoning = document.querySelector('.event-log-reasoning');
+    expect(reasoning.textContent).toBe('→ Reason: Hot afternoon predicted');
   });
 });

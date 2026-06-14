@@ -1,4 +1,4 @@
-import { eventBus, EVENTS } from '../utils/eventBus.js';
+import { eventBus as defaultEventBus, EVENTS } from '../utils/eventBus.js';
 
 /**
  * Family members available in the event form.
@@ -74,7 +74,7 @@ const DEFAULT_EVENTS = [
 
   // Dadiji
   { id: 'default-18', member: 'Dadiji', type: 'Wake up', time: '05:30', room: 'Master Bedroom', devices: ['Lights'] },
-  { id: 'default-19', member: 'Dadiji', type: 'Custom', time: '06:00', room: 'Balcony', devices: ['Lights'] },
+  { id: 'default-19', member: 'Dadiji', type: 'Custom', time: '06:00', room: 'Balcony', devices: ['Lights'], customLabel: 'Prayer' },
   { id: 'default-20', member: 'Dadiji', type: 'Bedtime', time: '21:00', room: 'Master Bedroom', devices: ['Lights', 'AC'] },
 ];
 
@@ -87,10 +87,12 @@ const DEFAULT_EVENTS = [
 export class LearningPanel {
   /**
    * @param {import('./UIManager.js').UIManager} uiManager — receives the UIManager to call deploy()
+   * @param {import('../utils/eventBus.js').EventBus} [eventBusInstance] — optional eventBus instance (defaults to singleton)
    */
-  constructor(uiManager) {
+  constructor(uiManager, eventBusInstance) {
     this.uiManager = uiManager;
-    /** @type {Array<{id: string, member: string, type: string, time: string, room: string, devices: string[]}>} */
+    this.eventBus = eventBusInstance || defaultEventBus;
+    /** @type {Array<{id: string, member: string, type: string, time: string, room: string, devices: string[], customLabel?: string}>} */
     this.events = [...DEFAULT_EVENTS];
     this.render();
     this.bindEvents();
@@ -98,7 +100,7 @@ export class LearningPanel {
 
   /**
    * Add a new event to the list, render it, and emit EVENT_ADDED.
-   * @param {{member: string, type: string, time: string, room: string, devices: string[]}} eventData
+   * @param {{member: string, type: string, time: string, room: string, devices: string[], customLabel?: string}} eventData
    */
   addEvent(eventData) {
     const event = {
@@ -108,7 +110,7 @@ export class LearningPanel {
     this.events.push(event);
     this.renderEventList();
     this.updateCounter();
-    eventBus.emit(EVENTS.EVENT_ADDED, event);
+    this.eventBus.emit(EVENTS.EVENT_ADDED, event);
   }
 
   /**
@@ -121,14 +123,16 @@ export class LearningPanel {
     this.renderEventList();
     this.updateCounter();
     if (removed) {
-      eventBus.emit(EVENTS.EVENT_REMOVED, removed);
+      this.eventBus.emit(EVENTS.EVENT_REMOVED, removed);
     }
   }
 
   /**
-   * Render the full form HTML inside the learning panel (#event-form div).
+   * Render the full panel HTML inside `#learning-phase .panel-content`
+   * (rebuilds the inner HTML of the #event-form container).
    */
   render() {
+    const panelContent = document.querySelector('#learning-phase .panel-content') || document.getElementById('event-form')?.parentElement;
     const formEl = document.getElementById('event-form');
     if (!formEl) return;
 
@@ -170,6 +174,26 @@ export class LearningPanel {
         </div>
         <button type="submit" class="btn-accent">+ Add Event</button>
       </form>
+
+      <div class="special-events-section">
+        <h4>⚡ Special Events</h4>
+        <div class="special-event-row">
+          <label>Power Cut</label>
+          <input type="time" id="special-powercut-time" aria-label="Power cut time" value="17:40" />
+          <input type="number" id="special-powercut-duration" aria-label="Power cut duration (minutes)" placeholder="Duration (min)" min="1" max="180" value="50" />
+          <button type="button" class="btn-special" data-special="power-cut">Add</button>
+        </div>
+        <div class="special-event-row">
+          <label>Guest Arriving</label>
+          <input type="time" id="special-guest-time" aria-label="Guest arrival time" value="16:00" />
+          <button type="button" class="btn-special" data-special="guest-arriving">Add</button>
+        </div>
+        <div class="special-event-row">
+          <label>Heavy Rain / Storm</label>
+          <input type="time" id="special-rain-time" aria-label="Heavy rain time" value="14:00" />
+          <button type="button" class="btn-special" data-special="heavy-rain">Add</button>
+        </div>
+      </div>
     `;
 
     this.renderEventList();
@@ -201,12 +225,33 @@ export class LearningPanel {
       html += `<div class="event-group">
         <h4 class="event-group-title">${member}</h4>`;
       for (const evt of grouped[member]) {
+        const typeLabel = evt.type === 'Custom' && evt.customLabel
+          ? `Custom/${evt.customLabel}`
+          : evt.type;
         html += `<div class="event-item" data-id="${evt.id}">
           <div class="event-item-info">
             <span class="event-time">${evt.time}</span>
-            <span class="event-type">${evt.type}</span>
+            <span class="event-type">${typeLabel}</span>
             <span class="event-room">${evt.room}</span>
             <span class="event-devices">${evt.devices.join(', ')}</span>
+          </div>
+          <button class="event-remove-btn" data-id="${evt.id}" title="Remove event" aria-label="Remove event">✕</button>
+        </div>`;
+      }
+      html += '</div>';
+    }
+
+    // Also show special events (not grouped by member)
+    const specialEvents = this.events.filter(e => e.member === 'Special');
+    if (specialEvents.length > 0) {
+      html += `<div class="event-group">
+        <h4 class="event-group-title">⚡ Special Events</h4>`;
+      for (const evt of specialEvents) {
+        const durationStr = evt.duration ? ` (${evt.duration} min)` : '';
+        html += `<div class="event-item special" data-id="${evt.id}">
+          <div class="event-item-info">
+            <span class="event-time">${evt.time}</span>
+            <span class="event-type">${evt.type}${durationStr}</span>
           </div>
           <button class="event-remove-btn" data-id="${evt.id}" title="Remove event" aria-label="Remove event">✕</button>
         </div>`;
@@ -223,12 +268,12 @@ export class LearningPanel {
   updateCounter() {
     const counterEl = document.getElementById('routine-counter');
     if (!counterEl) return;
-    const uniqueMembers = new Set(this.events.map(e => e.member)).size;
+    const uniqueMembers = new Set(this.events.filter(e => e.member !== 'Special').map(e => e.member)).size;
     counterEl.textContent = `Alexa has learned ${this.events.length} routines for ${uniqueMembers} family members`;
   }
 
   /**
-   * Bind form submit and deploy button events.
+   * Bind form submit, special event buttons, and deploy button events.
    */
   bindEvents() {
     // Form submission — delegated on #event-form container
@@ -256,6 +301,44 @@ export class LearningPanel {
         this.addEvent({ member, type, time, room, devices });
         form.reset();
       });
+
+      // Special events buttons
+      formEl.addEventListener('click', (e) => {
+        const specialBtn = e.target.closest('.btn-special');
+        if (!specialBtn) return;
+
+        const specialType = specialBtn.dataset.special;
+        if (specialType === 'power-cut') {
+          const time = document.getElementById('special-powercut-time')?.value || '17:40';
+          const duration = parseInt(document.getElementById('special-powercut-duration')?.value) || 50;
+          this.addEvent({
+            member: 'Special',
+            type: 'Power Cut',
+            time,
+            room: 'Living Room',
+            devices: ['AC', 'Lights', 'TV', 'Kitchen Hub'],
+            duration,
+          });
+        } else if (specialType === 'guest-arriving') {
+          const time = document.getElementById('special-guest-time')?.value || '16:00';
+          this.addEvent({
+            member: 'Special',
+            type: 'Guest Arriving',
+            time,
+            room: 'Living Room',
+            devices: ['AC', 'Lights', 'Lock', 'Camera'],
+          });
+        } else if (specialType === 'heavy-rain') {
+          const time = document.getElementById('special-rain-time')?.value || '14:00';
+          this.addEvent({
+            member: 'Special',
+            type: 'Heavy Rain / Storm',
+            time,
+            room: 'Balcony',
+            devices: ['Lock', 'Camera', 'Lights'],
+          });
+        }
+      });
     }
 
     // Remove event — delegated click handler on event list
@@ -277,7 +360,7 @@ export class LearningPanel {
         if (this.uiManager) {
           this.uiManager.deploy();
         }
-        eventBus.emit(EVENTS.PHASE_CHANGE, { phase: 'deployment', events: this.events });
+        this.eventBus.emit(EVENTS.PHASE_CHANGE, { phase: 'deployment', events: this.events });
       });
     }
   }

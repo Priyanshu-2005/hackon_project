@@ -52,31 +52,38 @@ describe('SpeechBubbleManager', () => {
       expect(scene.children[0].isCSS2DObject).toBe(true);
     });
 
-    it('sets the correct position on the CSS2DObject', () => {
+    it('sets the correct position on the CSS2DObject (y += 1.5 offset)', () => {
       const pos = new THREE.Vector3(5, 3, -2);
       manager.show(pos, 'Test');
 
       const label = scene.children[0];
       expect(label.position.x).toBe(5);
-      expect(label.position.y).toBe(3);
+      expect(label.position.y).toBe(4.5); // 3 + 1.5
       expect(label.position.z).toBe(-2);
     });
 
-    it('creates a div element with class speech-bubble', () => {
+    it('does not mutate the original position vector', () => {
+      const pos = new THREE.Vector3(1, 2, 3);
+      manager.show(pos, 'Test');
+
+      expect(pos.y).toBe(2); // original unchanged
+    });
+
+    it('creates a div element with class speech-bubble glass-panel', () => {
       const pos = new THREE.Vector3(0, 0, 0);
       manager.show(pos, 'Bubble text');
 
       const bubble = manager.activeBubbles[0];
       expect(bubble.el.tagName).toBe('DIV');
-      expect(bubble.el.className).toBe('speech-bubble');
+      expect(bubble.el.className).toBe('speech-bubble glass-panel');
     });
 
-    it('sets innerHTML to the provided text', () => {
+    it('sets textContent to the provided text', () => {
       const pos = new THREE.Vector3(0, 0, 0);
-      manager.show(pos, '<strong>Power cut</strong> detected');
+      manager.show(pos, 'Power cut detected');
 
       const bubble = manager.activeBubbles[0];
-      expect(bubble.el.innerHTML).toBe('<strong>Power cut</strong> detected');
+      expect(bubble.el.textContent).toBe('Power cut detected');
     });
 
     it('adds bubble to activeBubbles array', () => {
@@ -177,6 +184,54 @@ describe('SpeechBubbleManager', () => {
 
       manager.clear();
       expect(manager.getActiveBubbles().length).toBe(0);
+    });
+  });
+
+  describe('showForDevice', () => {
+    it('uses the device position from deviceIndicators', () => {
+      const deviceIndicators = {
+        getDevicePosition: (id) => {
+          if (id === 'living_room_ac') return new THREE.Vector3(3, 1, -2);
+          return undefined;
+        },
+      };
+
+      manager.showForDevice('living_room_ac', 'AC activated', deviceIndicators);
+
+      expect(manager.activeBubbles.length).toBe(1);
+      const label = scene.children[0];
+      expect(label.position.x).toBe(3);
+      expect(label.position.y).toBe(2.5); // 1 + 1.5
+      expect(label.position.z).toBe(-2);
+    });
+
+    it('falls back to (0, 2, 0) when device not found', () => {
+      const deviceIndicators = {
+        getDevicePosition: () => undefined,
+      };
+
+      manager.showForDevice('unknown_device', 'Fallback', deviceIndicators);
+
+      expect(manager.activeBubbles.length).toBe(1);
+      const label = scene.children[0];
+      expect(label.position.x).toBe(0);
+      expect(label.position.y).toBe(3.5); // 2 + 1.5
+      expect(label.position.z).toBe(0);
+    });
+
+    it('passes duration to show()', () => {
+      const deviceIndicators = {
+        getDevicePosition: () => new THREE.Vector3(0, 0, 0),
+      };
+
+      manager.showForDevice('test', 'Custom duration', deviceIndicators, 2000);
+
+      const bubble = manager.activeBubbles[0];
+      vi.advanceTimersByTime(1999);
+      expect(bubble.el.classList.contains('fade-out')).toBe(false);
+
+      vi.advanceTimersByTime(1);
+      expect(bubble.el.classList.contains('fade-out')).toBe(true);
     });
   });
 });

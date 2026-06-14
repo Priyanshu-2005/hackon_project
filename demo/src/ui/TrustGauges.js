@@ -26,6 +26,15 @@ const CATEGORIES = [
   'assistant',
 ];
 
+/** Tier color coding */
+const TIER_COLORS = {
+  1: '#666',      // gray
+  2: '#ff9f43',   // orange
+  3: '#00CAFF',   // cyan (Alexa blue)
+  4: '#4ecdc4',   // green
+  5: '#f7dc6f',   // gold
+};
+
 /** SVG ring geometry */
 const RING_RADIUS = 28;
 const RING_STROKE = 4;
@@ -184,8 +193,11 @@ export class TrustGauges {
 
     // Animate the circle stroke-dashoffset via CSS transition
     if (circle) {
-      circle.style.transition = 'stroke-dashoffset 0.6s ease-out';
+      circle.style.transition = 'stroke-dashoffset 0.6s ease-out, stroke 0.4s ease';
       circle.setAttribute('stroke-dashoffset', String(newOffset));
+      // Apply tier-based color coding
+      const tierColor = TIER_COLORS[tier] || TIER_COLORS[1];
+      circle.setAttribute('stroke', tierColor);
     }
 
     // Update score text

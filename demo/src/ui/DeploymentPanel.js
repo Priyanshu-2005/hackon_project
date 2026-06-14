@@ -25,10 +25,21 @@ export class DeploymentPanel {
     this.isPlaying = true;
 
     this.render();
+    this.renderSpeedControls();
+    this.renderPowerCutButton();
     this.bindPlayPause();
     this.bindSpeedControls();
     this.bindTimeline();
     this._bindTickUpdates();
+  }
+
+  /**
+   * Format minutes since midnight into "HH:MM" string.
+   * @param {number} minutes - Minutes since midnight (0–1439).
+   * @returns {string} Formatted time string, e.g. "07:30".
+   */
+  formatTime(minutes) {
+    return formatTime(minutes);
   }
 
   /**
@@ -66,6 +77,50 @@ export class DeploymentPanel {
   }
 
   /**
+   * Render speed control buttons into the #speed-controls container.
+   * Provides a duplicate set of speed buttons in the separate container
+   * as specified by the layout (floating above the timeline).
+   */
+  renderSpeedControls() {
+    const container = document.getElementById('speed-controls');
+    if (!container) return;
+
+    container.innerHTML = `
+      <button class="speed-btn" data-speed="1">1x</button>
+      <button class="speed-btn" data-speed="10">10x</button>
+      <button class="speed-btn active" data-speed="60">60x</button>
+      <button class="speed-btn" data-speed="120">120x</button>
+    `;
+  }
+
+  /**
+   * Render the "⚡ Power Cut" presentation button in a floating position.
+   * The actual handler will be wired in the integration step.
+   */
+  renderPowerCutButton() {
+    // Check if button already exists
+    if (document.getElementById('power-cut-btn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'power-cut-btn';
+    btn.className = 'btn-accent btn-icon power-cut-floating';
+    btn.setAttribute('aria-label', 'Trigger power cut scenario');
+    btn.textContent = '⚡ Power Cut';
+    btn.style.cssText = `
+      position: fixed;
+      bottom: 6.5rem;
+      right: 1.5rem;
+      z-index: 25;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    `;
+
+    document.body.appendChild(btn);
+  }
+
+  /**
    * Bind the timeline scrubber input event to simulation.seekTo().
    * When the user drags the scrubber, the simulation jumps to that minute.
    */
@@ -82,17 +137,23 @@ export class DeploymentPanel {
   /**
    * Bind speed control buttons to simulation.setSpeed().
    * Toggles the 'active' class to highlight the currently selected speed.
+   * Syncs active state across both #timeline-panel and #speed-controls containers.
    */
   bindSpeedControls() {
-    const buttons = document.querySelectorAll('.speed-btn');
-    buttons.forEach((btn) => {
+    const allButtons = document.querySelectorAll('.speed-btn');
+    allButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
         const speed = parseInt(btn.getAttribute('data-speed'), 10);
         this.simulation.setSpeed(speed);
 
-        // Toggle active class
-        buttons.forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
+        // Toggle active class across ALL speed buttons (both containers)
+        allButtons.forEach((b) => b.classList.remove('active'));
+        // Activate all buttons with same speed value
+        allButtons.forEach((b) => {
+          if (b.getAttribute('data-speed') === String(speed)) {
+            b.classList.add('active');
+          }
+        });
       });
     });
   }

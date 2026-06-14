@@ -20,18 +20,20 @@ export class SpeechBubbleManager {
   /**
    * Show a speech bubble at a given 3D position.
    * @param {THREE.Vector3} position - World position for the bubble
-   * @param {string} text - HTML text content to display
+   * @param {string} text - Text content to display
    * @param {number} [duration=5000] - Time in ms before fade-out starts
    */
   show(position, text, duration = 5000) {
     // Create the DOM element
     const el = document.createElement('div');
-    el.className = 'speech-bubble';
-    el.innerHTML = text;
+    el.className = 'speech-bubble glass-panel';
+    el.textContent = text;
 
     // Wrap in CSS2DObject
     const label = new CSS2DObject(el);
-    label.position.copy(position);
+    const bubblePos = position.clone();
+    bubblePos.y += 1.5; // Float above the device
+    label.position.copy(bubblePos);
 
     // Add to scene
     this.scene.add(label);
@@ -79,6 +81,21 @@ export class SpeechBubbleManager {
     if (idx !== -1) {
       this.activeBubbles.splice(idx, 1);
     }
+  }
+
+  /**
+   * Show a speech bubble for a specific device by ID.
+   * @param {string} deviceId - Device identifier to position the bubble at
+   * @param {string} text - Text content to display
+   * @param {object} deviceIndicators - DeviceIndicators instance with getDevicePosition(id)
+   * @param {number} [duration=5000] - Time in ms before fade-out starts
+   */
+  showForDevice(deviceId, text, deviceIndicators, duration = 5000) {
+    let position = deviceIndicators.getDevicePosition(deviceId);
+    if (!position) {
+      position = new THREE.Vector3(0, 2, 0);
+    }
+    return this.show(position, text, duration);
   }
 
   /**

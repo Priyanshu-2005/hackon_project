@@ -92,6 +92,16 @@ export class AvatarManager {
   }
 
   /**
+   * Get the mesh for a specific family member avatar.
+   * @param {string} memberId - Family member name
+   * @returns {THREE.Mesh|undefined}
+   */
+  getAvatar(memberId) {
+    const avatar = this.avatars.get(memberId);
+    return avatar ? avatar.mesh : undefined;
+  }
+
+  /**
    * Update avatar positions based on the current time of day.
    * Lerps each avatar toward its target room position.
    * @param {number} timeMinutes - Current time in minutes from midnight (0–1440).

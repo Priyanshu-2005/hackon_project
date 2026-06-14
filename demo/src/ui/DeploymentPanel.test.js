@@ -7,6 +7,7 @@ import { DeploymentPanel } from './DeploymentPanel.js';
 function setupDOM() {
   document.body.innerHTML = `
     <div id="timeline-panel" class="glass-panel"></div>
+    <div id="speed-controls"></div>
   `;
 }
 
@@ -62,7 +63,8 @@ describe('DeploymentPanel', () => {
     });
 
     it('renders four speed buttons with correct data-speed attributes', () => {
-      const buttons = document.querySelectorAll('.speed-btn');
+      const container = document.getElementById('timeline-panel');
+      const buttons = container.querySelectorAll('.speed-btn');
       expect(buttons.length).toBe(4);
 
       const speeds = Array.from(buttons).map((b) => b.getAttribute('data-speed'));
@@ -219,6 +221,75 @@ describe('DeploymentPanel', () => {
 
       const scrubber = document.getElementById('timeline-scrubber');
       expect(scrubber.value).toBe('90');
+    });
+  });
+
+  describe('formatTime()', () => {
+    it('returns "HH:MM" format for 0 minutes', () => {
+      expect(panel.formatTime(0)).toBe('00:00');
+    });
+
+    it('returns "HH:MM" format for 720 minutes (noon)', () => {
+      expect(panel.formatTime(720)).toBe('12:00');
+    });
+
+    it('returns "HH:MM" format for 1439 minutes (end of day)', () => {
+      expect(panel.formatTime(1439)).toBe('23:59');
+    });
+
+    it('pads single-digit hours and minutes', () => {
+      expect(panel.formatTime(65)).toBe('01:05');
+    });
+  });
+
+  describe('renderSpeedControls()', () => {
+    it('renders 4 speed buttons into #speed-controls container', () => {
+      const container = document.getElementById('speed-controls');
+      const buttons = container.querySelectorAll('.speed-btn');
+      expect(buttons.length).toBe(4);
+    });
+
+    it('renders speed buttons with correct data-speed attributes', () => {
+      const container = document.getElementById('speed-controls');
+      const buttons = container.querySelectorAll('.speed-btn');
+      const speeds = Array.from(buttons).map((b) => b.getAttribute('data-speed'));
+      expect(speeds).toEqual(['1', '10', '60', '120']);
+    });
+
+    it('has 60x active by default in #speed-controls', () => {
+      const container = document.getElementById('speed-controls');
+      const activeBtn = container.querySelector('.speed-btn.active');
+      expect(activeBtn).not.toBeNull();
+      expect(activeBtn.getAttribute('data-speed')).toBe('60');
+    });
+  });
+
+  describe('renderPowerCutButton()', () => {
+    it('renders the Power Cut button with correct id', () => {
+      const btn = document.getElementById('power-cut-btn');
+      expect(btn).not.toBeNull();
+    });
+
+    it('renders with "⚡ Power Cut" text', () => {
+      const btn = document.getElementById('power-cut-btn');
+      expect(btn.textContent).toBe('⚡ Power Cut');
+    });
+
+    it('has fixed positioning style', () => {
+      const btn = document.getElementById('power-cut-btn');
+      expect(btn.style.position).toBe('fixed');
+    });
+
+    it('has aria-label for accessibility', () => {
+      const btn = document.getElementById('power-cut-btn');
+      expect(btn.getAttribute('aria-label')).toBe('Trigger power cut scenario');
+    });
+
+    it('does not create duplicate buttons on re-render', () => {
+      // Creating another panel should not add a second button
+      new DeploymentPanel(mockUIManager, mockSimulation);
+      const buttons = document.querySelectorAll('#power-cut-btn');
+      expect(buttons.length).toBe(1);
     });
   });
 });

@@ -15,6 +15,8 @@ export class Effects {
   constructor(scene, deviceIndicators) {
     this.scene = scene;
     this.deviceIndicators = deviceIndicators;
+    /** Alias for deviceIndicators reference */
+    this.devices = deviceIndicators;
 
     /** @type {Map<string, { cleanup: Function }>} */
     this.activeAnimations = new Map();
@@ -47,7 +49,7 @@ export class Effects {
       // Sinusoidal pulse: sin(t * PI * 4) completes 2 full cycles in the duration
       const t = elapsed / duration;
       const pulse = Math.sin(t * Math.PI * 4) * 0.5 + 0.5;
-      mesh.material.emissiveIntensity = originalEmissiveIntensity + pulse;
+      mesh.material.emissiveIntensity = originalEmissiveIntensity + pulse * 0.8;
 
       animationId = requestAnimationFrame(animate);
     };
@@ -67,7 +69,9 @@ export class Effects {
 
   /**
    * Screen flicker effect simulating a power cut.
-   * Alternates the flicker overlay opacity over several cycles.
+   * Flickers 4 times over the duration:
+   * - Even flicker: opacity 0.8
+   * - Odd flicker: opacity 0
    *
    * @param {number} [duration=800] - Total flicker duration in milliseconds
    */
@@ -78,8 +82,8 @@ export class Effects {
     overlay.style.display = 'block';
     overlay.style.opacity = '0';
 
-    const flickerCycles = 4;
-    const cycleTime = duration / flickerCycles;
+    const flickerCount = 4;
+    const cycleTime = duration / flickerCount;
     const startTime = performance.now();
     let animationId = null;
 
@@ -92,10 +96,10 @@ export class Effects {
         return;
       }
 
-      // Determine which half of the cycle we're in
-      const cycleProgress = (elapsed % cycleTime) / cycleTime;
-      // First half: opacity ramps up, second half: ramps down
-      if (cycleProgress < 0.5) {
+      // Determine which flicker we're on (0-indexed)
+      const flickerIndex = Math.floor(elapsed / cycleTime);
+      // Even flicker: opacity 0.8, Odd flicker: opacity 0
+      if (flickerIndex % 2 === 0) {
         overlay.style.opacity = '0.8';
       } else {
         overlay.style.opacity = '0';
@@ -188,6 +192,32 @@ export class Effects {
         }
       },
     });
+  }
+
+  /**
+   * Restores all room lights to default values and cleans up inverter glow effects.
+   * Default emissiveIntensity: 0.4, default opacity: 0.9
+   */
+  restoreRooms() {
+    const roomLights = this.deviceIndicators.getAllRoomLights();
+
+    for (const { lightMesh } of roomLights) {
+      lightMesh.material.emissiveIntensity = 0.4;
+      lightMesh.material.opacity = 0.9;
+    }
+
+    // Clean up dimRooms animation entry
+    if (this.activeAnimations.has('dimRooms')) {
+      this.activeAnimations.delete('dimRooms');
+    }
+
+    // Clean up inverter glow effects
+    for (const [key, animation] of this.activeAnimations) {
+      if (key.startsWith('inverterGlow_')) {
+        animation.cleanup();
+        this.activeAnimations.delete(key);
+      }
+    }
   }
 
   /**

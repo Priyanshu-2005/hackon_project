@@ -143,12 +143,12 @@ describe('EventLog Property Tests - Event Log Entries', () => {
             // Action name appears in the rendered entry
             const actionEl = entryEl.querySelector('.event-log-action-name');
             expect(actionEl.textContent).toBe(entry.action);
-            // Device name appears in the rendered entry
+            // Device name appears in the rendered entry (with → prefix)
             const deviceEl = entryEl.querySelector('.event-log-device');
-            expect(deviceEl.textContent).toBe(entry.device);
-            // Reasoning text appears in the rendered entry
+            expect(deviceEl.textContent).toBe(`→ ${entry.device}`);
+            // Reasoning text appears in the rendered entry (with → Reason: prefix)
             const reasoningEl = entryEl.querySelector('.event-log-reasoning');
-            expect(reasoningEl.textContent).toBe(entry.reasoning);
+            expect(reasoningEl.textContent).toBe(`→ Reason: ${entry.reasoning}`);
           }
         ),
         { numRuns: 200 }
@@ -199,7 +199,7 @@ describe('EventLog Property Tests - Event Log Entries', () => {
               expect(actionEl.textContent).toBe(entries[i].action);
 
               const deviceEl = renderedEntries[i].querySelector('.event-log-device');
-              expect(deviceEl.textContent).toBe(entries[i].device);
+              expect(deviceEl.textContent).toBe(`→ ${entries[i].device}`);
             }
           }
         ),
