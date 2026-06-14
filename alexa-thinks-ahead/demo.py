@@ -35,6 +35,7 @@ from src.autonomy.engine import AutonomyEngine
 from src.learning.engine import LearningEngine
 from src.reasoning.client import BedrockReasoningClient
 from src.reasoning.explainer import ExplanationGenerator
+from src.devices.demo_states import DEMO_STATES
 from src.models.device import DeviceCategory, DeviceState, DeviceCommand, CommandResult
 
 
@@ -45,18 +46,7 @@ from src.models.device import DeviceCategory, DeviceState, DeviceCommand, Comman
 class SimulatedAdapter(DeviceAdapter):
     """Simulated device adapter for local demo."""
 
-    DEMO_STATES = {
-        "living_room_ac": {"power": True, "temperature": 24, "mode": "cool", "fan_speed": "auto"},
-        "smart_lights": {"power": True, "brightness": 80, "color": "#FFF5E1", "scene": "evening"},
-        "security_camera": {"armed": True, "motion_detected": False, "recording": True},
-        "smart_lock": {"locked": True, "auto_lock": True, "battery_level": 85},
-        "kitchen_hub": {"active_appliance": "none", "status": "idle"},
-        "water_purifier": {"power": True, "filter_life_pct": 72, "water_quality_tds": 45},
-        "smart_geyser": {"power": True, "temperature": 55, "target_temperature": 55},
-        "inverter_ups": {"battery_level": 80, "load_watts": 450, "mode": "normal", "grid_status": "online"},
-        "smart_tv": {"power": False, "volume": 30},
-        "echo_devices": {"power": True, "volume": 50, "active": True, "last_announcement": ""},
-    }
+    DEMO_STATES = DEMO_STATES
 
     def __init__(self, device_id, device_type, config):
         super().__init__(device_id, device_type, config)
@@ -441,6 +431,28 @@ def run_learning_demo():
     print(f"  → System is {learning.get_personalization_index('rajesh'):.0%} personalized for Rajesh")
 
 
+
+# ============================================================
+# CORS and API Routing Helpers
+# ============================================================
+
+ALLOWED_ORIGIN = "*"
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+API_PREFIX = "/api/v1"
+
+
+def _strip_prefix(path: str) -> str:
+    """Remove the /api/v1 prefix if present so routing is version-agnostic."""
+    if path.startswith(API_PREFIX):
+        stripped = path[len(API_PREFIX):]
+        return stripped if stripped.startswith("/") else "/" + stripped
+    return path
+
+
 def run_api_demo():
     """Start a local Flask-like API server for interactive demo."""
     print_header("🌐 LOCAL API SERVER")
@@ -455,49 +467,57 @@ def run_api_demo():
         return
 
     class DemoHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            event = {"httpMethod": "GET", "path": self.path, "pathParameters": {}, "body": ""}
-            # Extract path params for device state requests
-            if "/devices/" in self.path and self.path.endswith("/state"):
-                device_id = self.path.split("/")[2]
-                event["pathParameters"] = {"id": device_id}
-
-            result = lambda_handler(event, None)
-            self.send_response(result["statusCode"])
-            for k, v in result["headers"].items():
+        def do_OPTIONS(self):
+            """Handle CORS preflight requests: 204, empty body, CORS headers."""
+            self.send_response(204)
+            for k, v in CORS_HEADERS.items():
                 self.send_header(k, v)
             self.end_headers()
+            # no body
+
+        def _dispatch(self, http_method, body=""):
+            """Strip prefix, parse path params, call lambda_handler, add CORS headers."""
+            path = _strip_prefix(self.path)
+            event = {"httpMethod": http_method, "path": path, "pathParameters": {}, "body": body}
+
+            # Parse path segments relative to the stripped path
+            parts = [p for p in path.split("/") if p]
+
+            # GET /devices/{id}/state
+            if http_method == "GET" and len(parts) >= 3 and parts[0] == "devices" and parts[-1] == "state":
+                event["pathParameters"] = {"id": parts[1]}
+            # POST /devices/{id}/command
+            elif http_method == "POST" and len(parts) >= 3 and parts[0] == "devices" and parts[-1] == "command":
+                event["pathParameters"] = {"id": parts[1]}
+            # PUT /autonomy/tiers/{device}
+            elif http_method == "PUT" and len(parts) >= 3 and parts[0] == "autonomy" and parts[1] == "tiers":
+                event["pathParameters"] = {"device": parts[-1]}
+
+            result = lambda_handler(event, None)
+
+            self.send_response(result["statusCode"])
+            # Include CORS allow-origin on every non-OPTIONS response
+            for k, v in CORS_HEADERS.items():
+                self.send_header(k, v)
+            # Include any additional headers from the lambda response
+            for k, v in result.get("headers", {}).items():
+                if k not in CORS_HEADERS:
+                    self.send_header(k, v)
+            self.end_headers()
             self.wfile.write(result["body"].encode())
+
+        def do_GET(self):
+            self._dispatch("GET")
 
         def do_POST(self):
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length).decode() if content_length else ""
-            event = {"httpMethod": "POST", "path": self.path, "pathParameters": {}, "body": body}
-            if "/devices/" in self.path and self.path.endswith("/command"):
-                device_id = self.path.split("/")[2]
-                event["pathParameters"] = {"id": device_id}
-
-            result = lambda_handler(event, None)
-            self.send_response(result["statusCode"])
-            for k, v in result["headers"].items():
-                self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(result["body"].encode())
+            self._dispatch("POST", body)
 
         def do_PUT(self):
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length).decode() if content_length else ""
-            event = {"httpMethod": "PUT", "path": self.path, "pathParameters": {}, "body": body}
-            if "/autonomy/tiers/" in self.path:
-                device = self.path.split("/")[-1]
-                event["pathParameters"] = {"device": device}
-
-            result = lambda_handler(event, None)
-            self.send_response(result["statusCode"])
-            for k, v in result["headers"].items():
-                self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(result["body"].encode())
+            self._dispatch("PUT", body)
 
         def log_message(self, format, *args):
             print(f"  [{datetime.now().strftime('%H:%M:%S')}] {args[0]}")
@@ -507,12 +527,16 @@ def run_api_demo():
     print(f"  ✅ Server running at http://localhost:{port}")
     print()
     print("  Available endpoints:")
-    print(f"    GET  http://localhost:{port}/devices")
-    print(f"    GET  http://localhost:{port}/devices/living_room_ac/state")
-    print(f"    POST http://localhost:{port}/devices/living_room_ac/command")
-    print(f"    GET  http://localhost:{port}/context/snapshot")
-    print(f"    GET  http://localhost:{port}/context/patterns")
-    print(f"    GET  http://localhost:{port}/autonomy/tiers")
+    print(f"    GET  http://localhost:{port}/api/v1/devices")
+    print(f"    GET  http://localhost:{port}/api/v1/devices/living_room_ac/state")
+    print(f"    POST http://localhost:{port}/api/v1/devices/living_room_ac/command")
+    print(f"    GET  http://localhost:{port}/api/v1/context/snapshot")
+    print(f"    GET  http://localhost:{port}/api/v1/context/patterns")
+    print(f"    GET  http://localhost:{port}/api/v1/autonomy/tiers")
+    print(f"    PUT  http://localhost:{port}/api/v1/autonomy/tiers/climate")
+    print(f"    POST http://localhost:{port}/api/v1/scenario/power-cut")
+    print()
+    print("  (Paths without /api/v1 prefix also work for backward compatibility)")
     print()
     print("  Press Ctrl+C to stop.")
     print()

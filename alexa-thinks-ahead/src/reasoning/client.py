@@ -315,3 +315,63 @@ class BedrockReasoningClient:
             explanation="Unable to generate reasoning at this time.",
             latency_ms=0,
         )
+
+
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """AWS Lambda entry point for the Reasoning Proxy function.
+
+    Referenced by ``ReasoningProxyFunction`` in template.yaml
+    (``src/reasoning/client.lambda_handler``). This is a thin proxy that
+    lets you validate live Bedrock connectivity once deployed, without
+    wiring the full context pipeline.
+
+    Supported invocation payloads (``event``):
+      * ``{"prompt": "<text>"}`` -> sends the raw prompt to Claude and
+        returns the model's text.
+      * Anything else -> returns a 400 describing the expected shape.
+
+    Returns an API-Gateway-style dict so it can sit behind a proxy route
+    or be invoked directly via the AWS CLI / console.
+
+    Args:
+        event: Invocation payload. May be a raw dict or an API Gateway
+            event whose JSON body holds the payload.
+        context: Lambda context (unused).
+
+    Returns:
+        ``{"statusCode": int, "body": <json string>}``.
+    """
+    # Accept either a direct dict or an API Gateway event with a JSON body.
+    payload = event
+    if isinstance(event, dict) and "body" in event and isinstance(event["body"], str):
+        try:
+            payload = json.loads(event["body"]) if event["body"] else {}
+        except json.JSONDecodeError:
+            payload = {}
+
+    prompt = payload.get("prompt") if isinstance(payload, dict) else None
+    if not prompt:
+        return {
+            "statusCode": 400,
+            "body": json.dumps(
+                {"error": "Expected a JSON payload with a non-empty 'prompt' field."}
+            ),
+        }
+
+    try:
+        client = BedrockReasoningClient()
+        model_response = client._invoke_model(prompt)
+        content = model_response.get("content", [])
+        text = content[0].get("text", "") if content else ""
+        return {
+            "statusCode": 200,
+            "body": json.dumps(
+                {"model_id": client._model_id, "text": text}
+            ),
+        }
+    except Exception as e:  # pragma: no cover - exercised only against live AWS
+        logger.error(f"Reasoning proxy invocation failed: {e}")
+        return {
+            "statusCode": 502,
+            "body": json.dumps({"error": "Bedrock invocation failed"}),
+        }

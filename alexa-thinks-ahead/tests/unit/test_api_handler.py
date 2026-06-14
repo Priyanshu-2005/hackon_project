@@ -49,8 +49,8 @@ class TestGetDeviceState:
         result = lambda_handler(event, None)
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert body["device_id"] == "living_room_ac"
-        assert body["status"] == "online"
+        assert body["id"] == "living_room_ac"
+        assert "state" in body
 
     def test_invalid_device_returns_404(self):
         event = _make_event(
@@ -66,7 +66,7 @@ class TestGetDeviceState:
         result = lambda_handler(event, None)
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert body["device_id"] == "smart_tv"
+        assert body["id"] == "smart_tv"
 
 
 class TestSendCommand:
@@ -123,8 +123,9 @@ class TestGetContextSnapshot:
         result = lambda_handler(event, None)
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert body["snapshot_id"] == "current"
-        assert body["device_count"] == 10
+        assert "timestamp" in body
+        assert "deviceStates" in body
+        assert len(body["deviceStates"]) == 10
 
 
 class TestGetContextPatterns:
@@ -162,8 +163,9 @@ class TestUpdateAutonomyTier:
         result = lambda_handler(event, None)
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
+        assert body["success"] is True
         assert body["device"] == "climate"
-        assert body["new_tier"] == 3
+        assert body["currentTier"] == 3
 
     def test_missing_tier_returns_400(self):
         event = _make_event(

@@ -46,11 +46,15 @@ class TestGetDevices:
         result = lambda_handler(event, None)
         body = json.loads(result["body"])
 
+        assert "count" in body
+        assert body["count"] == len(body["devices"])
         for device in body["devices"]:
-            assert "device_id" in device
-            assert "device_type" in device
-            assert "category" in device
+            assert "id" in device
             assert "name" in device
+            assert "category" in device
+            assert "room" in device
+            assert "brand" in device
+            assert "state" in device
 
     def test_list_devices_has_cors_headers(self):
         """Response includes CORS headers."""
@@ -75,8 +79,8 @@ class TestGetDeviceState:
 
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert body["device_id"] == "living_room_ac"
-        assert "status" in body
+        assert body["id"] == "living_room_ac"
+        assert "state" in body
 
     def test_get_unknown_device_returns_404(self):
         """GET state for unknown device returns 404."""
@@ -175,7 +179,9 @@ class TestContextEndpoints:
 
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert "snapshot_id" in body
+        assert "timestamp" in body
+        assert "deviceStates" in body
+        assert len(body["deviceStates"]) == 10
 
     def test_get_patterns(self):
         """GET /context/patterns returns 200 with patterns array."""
@@ -212,7 +218,9 @@ class TestAutonomyEndpoints:
 
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert body["new_tier"] == 3
+        assert body["success"] is True
+        assert body["device"] == "climate"
+        assert body["currentTier"] == 3
 
     def test_update_tier_missing_tier_field(self):
         """PUT without tier field returns 400."""

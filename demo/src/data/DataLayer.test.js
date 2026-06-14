@@ -1,7 +1,9 @@
 /**
  * Property tests for the DataLayer module.
  *
- * **Validates: Requirements 2.1, 2.3, 2.4**
+ * Feature: demo-backend-integration, Property 11: Data layer routes requests by mode
+ *
+ * **Validates: Requirements 9.1, 9.2, 9.3, 9.4**
  *
  * Property 1: Data layer mode routing - when mode is 'mock', all calls go to
  * MockProvider; when mode is 'real', all calls go to ApiProvider.
@@ -10,6 +12,7 @@
  * the expected schema structure.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
+import fc from 'fast-check';
 import { DataLayer } from './DataLayer.js';
 import { MockProvider } from './MockProvider.js';
 import { ApiProvider } from './ApiProvider.js';
@@ -322,5 +325,60 @@ describe('DataLayer - Property 2: Mock Data Schema Conformance', () => {
       expect(result.deviceId).toBe('living_room_ac');
       expect(typeof result.timestamp).toBe('string');
     });
+  });
+});
+
+/**
+ * Feature: demo-backend-integration, Property 11: Data layer routes requests by mode
+ *
+ * **Validates: Requirements 9.1, 9.2, 9.3, 9.4**
+ *
+ * For any sequence of mode settings, the Data_Layer SHALL route requests to the
+ * Api_Provider when the Mode is 'real' and to the Mock_Provider otherwise,
+ * with the initial Mode being 'mock'.
+ */
+describe('Property 11: Data layer routes requests by mode (property-based)', () => {
+  it('for any sequence of mode switches, the provider always matches the current mode', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom('mock', 'real'), { minLength: 1, maxLength: 20 }),
+        (modeSequence) => {
+          const dataLayer = new DataLayer();
+
+          // Initial mode must be 'mock' (Requirement 9.1)
+          expect(dataLayer.mode).toBe('mock');
+          expect(dataLayer.provider).toBeInstanceOf(MockProvider);
+
+          for (const mode of modeSequence) {
+            dataLayer.setMode(mode);
+
+            if (mode === 'real') {
+              // Requirement 9.3: real mode routes to ApiProvider
+              expect(dataLayer.provider).toBeInstanceOf(ApiProvider);
+            } else {
+              // Requirement 9.2: mock mode routes to MockProvider
+              expect(dataLayer.provider).toBeInstanceOf(MockProvider);
+            }
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  it('for any mode value, repeated access to provider returns the same instance', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom('mock', 'real'),
+        (mode) => {
+          const dataLayer = new DataLayer();
+          dataLayer.setMode(mode);
+          const ref1 = dataLayer.provider;
+          const ref2 = dataLayer.provider;
+          expect(ref1).toBe(ref2);
+        }
+      ),
+      { numRuns: 100 }
+    );
   });
 });

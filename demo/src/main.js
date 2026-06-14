@@ -195,11 +195,160 @@ if (dataToggleContainer) {
   });
 }
 
+// Helper: resolve a device ID to its room for the real-mode power-cut animation.
+// Uses known device-to-room mappings from DEVICE_PLACEMENTS in FloorPlan2D.
+const DEVICE_ROOM_MAP = {
+  living_room_ac: 'living_room',
+  smart_tv: 'living_room',
+  echo_living: 'living_room',
+  kitchen_hub: 'kitchen',
+  water_purifier: 'kitchen',
+  security_camera: 'balcony',
+  smart_lock: 'balcony',
+  smart_geyser: 'bath',
+  inverter_ups: 'kitchen',
+  echo_study: 'study_room',
+  echo_kids: 'kids_room',
+};
+function _getDevicePlacement(deviceId) {
+  return DEVICE_ROOM_MAP[deviceId] || null;
+}
+
 // 4. Power Cut button — wire the button rendered inside the timeline panel
 const powerCutBtn = document.getElementById('power-cut-btn');
 if (powerCutBtn) {
-  powerCutBtn.addEventListener('click', () => {
-    powerCutScenario.trigger(simulationEngine.currentTimeMinutes);
+  powerCutBtn.addEventListener('click', async () => {
+    const currentTimeMinutes = simulationEngine.currentTimeMinutes;
+
+    // In real mode: call the backend scenario endpoint and animate from the response
+    if (dataLayer.mode === 'real') {
+      try {
+        const response = await dataLayer.apiProvider.runPowerCutScenario();
+
+        // --- Stage 1: SENSE (flicker effect) ---
+        floorPlan.powerCutFlicker();
+        stateStore.addEventLogEntry({
+          time: currentTimeMinutes,
+          action: 'Power Cut - SENSE',
+          device: 'inverter_ups',
+          reasoning: 'Power grid failure detected (real backend).',
+          type: 'power_cut',
+          stage: 'SENSE',
+        });
+
+        // --- Stage 2: THINK (show reasoning/explanation) ---
+        setTimeout(() => {
+          // Render the explanation and reasoning chain in the ReasoningPanel
+          const reasoningContent = `
+            <h3>⚡ Power Cut — Alexa's Reasoning (Live)</h3>
+            <div class="reasoning-steps">
+              <p>💬 <strong>Explanation:</strong> ${response.explanation || 'Analyzing situation...'}</p>
+              ${response.reasoning_chain ? `<p>🧠 <strong>Reasoning:</strong> ${response.reasoning_chain}</p>` : ''}
+            </div>
+          `;
+          reasoningPanel.show(reasoningContent);
+
+          stateStore.addEventLogEntry({
+            time: currentTimeMinutes,
+            action: 'Power Cut - THINK',
+            device: 'inverter_ups',
+            reasoning: response.explanation || 'Contextual reasoning from backend.',
+            type: 'power_cut',
+            stage: 'THINK',
+          });
+        }, 500);
+
+        // --- Stage 3: ACT (map target_devices to FloorPlan2D effects) ---
+        setTimeout(() => {
+          const roomsToKeepLit = [];
+
+          for (const action of response.actions) {
+            // Log each action to the EventLog
+            stateStore.addEventLogEntry({
+              time: currentTimeMinutes,
+              action: `Power Cut - ACT: ${action.strategy}`,
+              device: (action.target_devices || []).join(', '),
+              reasoning: action.reasoning || `Strategy: ${action.strategy}, Confidence: ${action.confidence}`,
+              type: 'power_cut',
+              stage: 'ACT',
+            });
+
+            // Map target_devices to visual effects
+            for (const deviceId of action.target_devices || []) {
+              if (deviceId === 'inverter_ups') {
+                floorPlan.inverterGlow(deviceId);
+              } else {
+                floorPlan.highlightDevice(deviceId, 3000);
+              }
+
+              // Track rooms that should stay lit (devices with power priority)
+              if (action.strategy === 'energy_optimization' || action.strategy === 'priority_power') {
+                const placement = _getDevicePlacement(deviceId);
+                if (placement && !roomsToKeepLit.includes(placement)) {
+                  roomsToKeepLit.push(placement);
+                }
+              }
+            }
+          }
+
+          // Dim rooms — keep priority rooms lit
+          const defaultPriorityRooms = ['study_room', 'living_room'];
+          floorPlan.dimRooms(roomsToKeepLit.length > 0 ? roomsToKeepLit : defaultPriorityRooms);
+        }, 1500);
+
+        // --- Stage 4: EXPLAIN (speech bubbles with family-facing lines) ---
+        setTimeout(() => {
+          // Show explanation text as speech bubble on echo devices
+          if (response.explanation) {
+            floorPlan.showSpeechBubble('echo_living', response.explanation, 7000);
+          }
+
+          // Surface family-facing lines for specific members
+          floorPlan.showSpeechBubble(
+            'echo_study',
+            "Your class won't be interrupted, Arjun. Study room is on backup power.",
+            6000
+          );
+          floorPlan.showSpeechBubble(
+            'kitchen_hub',
+            "Kitchen hub paused to conserve inverter. Estimated backup: 2.5 hours.",
+            6000
+          );
+
+          stateStore.addEventLogEntry({
+            time: currentTimeMinutes,
+            action: 'Power Cut - EXPLAIN',
+            device: 'echo_devices',
+            reasoning: response.explanation || 'Announcing status to family.',
+            type: 'power_cut',
+            stage: 'EXPLAIN',
+          });
+        }, 2500);
+
+        // Auto-restore after 30 seconds
+        setTimeout(() => {
+          floorPlan.restoreAll();
+          reasoningPanel.hide();
+        }, 30000);
+
+      } catch (err) {
+        console.error('Real power-cut scenario failed, falling back to scripted:', err);
+        // Show error indication in event log
+        stateStore.addEventLogEntry({
+          time: currentTimeMinutes,
+          action: 'Power Cut - ERROR',
+          device: 'system',
+          reasoning: `Backend scenario failed: ${err.message}. Falling back to scripted demo.`,
+          type: 'error',
+          stage: 'ERROR',
+        });
+        // Fall back to scripted scenario
+        powerCutScenario.trigger(currentTimeMinutes);
+      }
+    } else {
+      // Mock mode: run existing scripted PowerCutScenario unchanged
+      powerCutScenario.trigger(currentTimeMinutes);
+    }
   });
 }
 
