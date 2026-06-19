@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏠 Alexa Thinks Ahead
+#  Alexa Thinks Ahead
 
 ### A proactive, explainable AI smart-home brain that acts *before* you ask.
 
@@ -17,13 +17,15 @@
 
 ---
 
-## 🎯 The Problem
+<b>Deployed Link</b>: http://54.252.207.144/
+
+##  The Problem
 
 Today's smart homes are **reactive**. You still have to *ask*: "Alexa, turn on the geyser," "Alexa, lock the door," "Alexa, cool the living room." The assistant waits for a command, then obeys. It never anticipates, never explains, and never earns your trust to do more on its own.
 
 For a multi-generational household — like the **Sharma family** (working parents, two kids, two grandparents) — that means dozens of repetitive commands a day and zero foresight.
 
-## 💡 The Solution
+##  The Solution
 
 **Alexa Thinks Ahead** turns Alexa from a *command-taker* into a *household partner*. It learns each family member's daily routine, uses **Amazon Bedrock (Claude 3 Sonnet)** to reason about what the home will need next, and acts **ahead of time** — every action paired with a plain-language explanation and gated by a **trust-based autonomy model** the family controls.
 
@@ -43,24 +45,30 @@ flowchart LR
 
 ---
 
-## 📸 Demo Walkthrough
+##  Demo Walkthrough
+
+<b>Demo Video</b>: https://drive.google.com/file/d/1ydFScfN2S9T7CfGAi2wff9esUF8qIfWo/view?usp=sharing
 
 The repository ships with a fully interactive browser demo that visualizes the entire system on a 2-D floor plan of the Sharma home. Here is the end-to-end judge flow.
 
-### 1️⃣ Learning Phase — Alexa learns the household
+### 1. Learning Phase — Alexa learns the household
 
 <p align="center">
-  <img src="docs/images/04-learning-panel.png" width="330" alt="Learning phase panel" />
+  <img src="https://github.com/user-attachments/assets/cbaebced-679d-4c1d-8c2f-166034035faf" width="330" alt="Learning phase panel" />
+  <!-- <img width="470" height="761" alt="image"  /> -->
+
 </p>
 
 The family uploads **last week's activity log (CSV)**. It's sent to **Amazon Bedrock**, which detects each member's recurring routines (wake-up, leaving, returning, cooking, evening activity) and reports them with a **confidence score**. No manual rule-writing — Alexa *learns*.
 
 > 📂 *A one-click sample CSV is bundled so judges can try the whole flow instantly, or download the template and upload their own.*
 
-### 2️⃣ Deployment Phase — Alexa thinks ahead, live
+### 2. Deployment Phase — Alexa thinks ahead, live
 
 <p align="center">
-  <img src="docs/images/02-deployment.png" width="850" alt="Deployment phase: floor plan, trust gauges and event log" />
+  <img src="https://github.com/user-attachments/assets/c3663589-b0d0-470f-98cb-5c923261dd47" width="850" alt="Deployment phase: floor plan, trust gauges and event log" />
+  <!-- <img width="1440" height="761" alt="image"  /> -->
+
 </p>
 
 Press **Deploy** and a simulated 24-hour day plays out on a scrubbable timeline. As the clock advances, Alexa fires **proactive actions at the right moment** — visualized on the floor plan, logged on the right, and scored on the left.
@@ -72,33 +80,39 @@ Press **Deploy** and a simulated 24-hour day plays out on a scrubbable timeline.
 | 📊 **Left — Trust Scores** | Per-category trust gauges that drive how autonomous Alexa is allowed to be |
 | ⏱️ **Bottom — Timeline** | Play / pause, 1×–120× speed, and a scrubber to jump through the day |
 
-### 3️⃣ The Event Log — every action is explained & correctable
+### 3️3. The Event Log — every action is explained & correctable
 
 <p align="center">
-  <img src="docs/images/05-event-log.png" width="330" alt="Event log with reasoning and override" />
+  <img src="https://github.com/user-attachments/assets/373f9f0f-f902-4913-a35f-9a1d25e9098a" width="330" alt="Event log with reasoning and override" />
+  <!-- <img width="355" height="753" alt="image"  /> -->
+
 </p>
 
 This is the heart of *explainable* automation. Each card states **what** Alexa did, **why** (Bedrock-generated reasoning), and lets the user hit **Override** — which teaches Alexa it was wrong and **lowers the trust score** for that category, so it asks first next time.
 
-### 4️⃣ Trust & Autonomy — the family stays in control
+### 4. Trust & Autonomy — the family stays in control
 
 <p align="center">
-  <img src="docs/images/06-trust-gauges.png" width="220" alt="Per-category trust gauges" />
+  <img src="https://github.com/user-attachments/assets/cbd343c9-cefa-4ace-a845-9c3fa7167382" width="220" alt="Per-category trust gauges" />
+  <!-- <img width="280" height="540" alt="image" /> -->
+
 </p>
 
 Trust is **earned per device category**. Accepted actions raise it; overrides drop it. The score maps to a **5-tier autonomy model** (below) — Alexa only auto-acts once it has earned the right to.
 
-### 5️⃣ Resilience Scenario — a power cut, handled gracefully
+### 5. Resilience Scenario — a power cut, handled gracefully
 
 <p align="center">
-  <img src="docs/images/03-power-cut.png" width="850" alt="Power-cut scenario showing SENSE-THINK-ACT-EXPLAIN reasoning" />
+  <img src="https://github.com/user-attachments/assets/a092fb4b-df67-433f-a3f8-c4ff9e88a92c" width="850" alt="Power-cut scenario showing SENSE-THINK-ACT-EXPLAIN reasoning" />
+  <!-- <img width="1440" height="761" alt="image"  /> -->
+
 </p>
 
 Trigger **⚡ Power Cut** and watch the full cognitive loop in one shot: Alexa **SENSES** the grid failure, **THINKS** about priorities (a child's online class, the grandparents' comfort), **ACTS** by shifting essential rooms to inverter backup and shedding load, and **EXPLAINS** it to each family member — *"Your class won't be interrupted, Arjun."*
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 A fully **serverless, event-driven** design on AWS, with Amazon Bedrock as the reasoning core.
 
@@ -186,7 +200,7 @@ sequenceDiagram
 
 ---
 
-## 🛡️ Trust & The 5-Tier Autonomy Model
+## Trust & The 5-Tier Autonomy Model
 
 Alexa never grabs full control on day one. Every device category has a **trust score (0–100)** that maps to an autonomy tier. The score rises when the family accepts an action and falls when they **Override** one — so autonomy is *earned*.
 
@@ -213,7 +227,7 @@ flowchart LR
 
 ---
 
-## 🧱 Core Intelligence Modules
+##  Core Intelligence Modules
 
 | Module | Responsibility |
 | --- | --- |
@@ -226,7 +240,7 @@ flowchart LR
 
 ---
 
-## 🧰 Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -242,7 +256,7 @@ flowchart LR
 
 ---
 
-## 📂 Repository Structure
+##  Repository Structure
 
 ```
 alexa-thinks-ahead/          # Serverless backend (the "brain")
@@ -270,7 +284,7 @@ demo/                        # Interactive browser demo (the "showcase")
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Run the interactive demo
 
