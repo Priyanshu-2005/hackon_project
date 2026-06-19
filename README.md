@@ -61,7 +61,7 @@ The repository ships with a fully interactive browser demo that visualizes the e
 
 The family uploads **last week's activity log (CSV)**. It's sent to **Amazon Bedrock**, which detects each member's recurring routines (wake-up, leaving, returning, cooking, evening activity) and reports them with a **confidence score**. No manual rule-writing — Alexa *learns*.
 
-> 📂 *A one-click sample CSV is bundled so judges can try the whole flow instantly, or download the template and upload their own.*
+>  *A one-click sample CSV is bundled so judges can try the whole flow instantly, or download the template and upload their own.*
 
 ### 2. Deployment Phase — Alexa thinks ahead, live
 
@@ -75,10 +75,10 @@ Press **Deploy** and a simulated 24-hour day plays out on a scrubbable timeline.
 
 | Region | What it shows |
 | --- | --- |
-| 🏠 **Center — Floor plan** | Live device + family-member state, room lighting, and a glow/▸ speech bubble whenever Alexa acts |
-| 📋 **Right — Event Log** | Every proactive action with its target device, **AI reasoning**, autonomy tier, and an **Override** button |
-| 📊 **Left — Trust Scores** | Per-category trust gauges that drive how autonomous Alexa is allowed to be |
-| ⏱️ **Bottom — Timeline** | Play / pause, 1×–120× speed, and a scrubber to jump through the day |
+|  **Center — Floor plan** | Live device + family-member state, room lighting, and a glow/▸ speech bubble whenever Alexa acts |
+|  **Right — Event Log** | Every proactive action with its target device, **AI reasoning**, autonomy tier, and an **Override** button |
+|  **Left — Trust Scores** | Per-category trust gauges that drive how autonomous Alexa is allowed to be |
+|  **Bottom — Timeline** | Play / pause, 1×–120× speed, and a scrubber to jump through the day |
 
 ### 3️3. The Event Log — every action is explained & correctable
 
@@ -170,7 +170,7 @@ flowchart TB
 
 ---
 
-## 🔮 How "Thinking Ahead" Works
+## How "Thinking Ahead" Works
 
 The signature flow: a household's past week becomes Alexa's plan for *today*.
 
@@ -318,7 +318,7 @@ cd demo && npm test
 
 ---
 
-## 📊 Impact at a Glance
+## Impact at a Glance
 
 | Metric | Result |
 | --- | --- |
@@ -332,7 +332,7 @@ cd demo && npm test
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] Real Alexa device fleet integration (beyond the simulator)
 - [ ] Per-member voice identification for personalized tiers
@@ -343,8 +343,6 @@ cd demo && npm test
 ---
 
 <div align="center">
-
-### Built with ❤️ for HackOn with Amazon — Season 6.0
 
 *Alexa Thinks Ahead — because the best assistant is the one you never have to ask.*
 
