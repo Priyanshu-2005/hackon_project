@@ -16,6 +16,7 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -25,6 +26,31 @@ import io
 
 # Ensure src is importable
 sys.path.insert(0, str(Path(__file__).parent))
+
+
+def _load_dotenv():
+    """Load KEY=VALUE pairs from a local .env into os.environ (no deps).
+
+    Existing environment variables take precedence (so an explicitly exported
+    value is never overwritten). Lines that are blank or start with '#' are
+    ignored. This makes the .env file the single source of truth for the demo
+    (AWS region, BEDROCK_MODEL_ID, credentials, etc.).
+    """
+    env_path = Path(__file__).parent / ".env"
+    if not env_path.exists():
+        return
+    for raw in env_path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+# Load .env BEFORE importing modules that read config on import.
+_load_dotenv()
 
 from src.context.engine import ContextEngine
 from src.devices.base import DeviceAdapter
@@ -541,10 +567,50 @@ def run_api_demo():
     print("  Press Ctrl+C to stop.")
     print()
 
+    # Pre-warm the Bedrock prediction cache in the background so the first
+    # CSV upload during the demo is instant (the ~25s generation happens now,
+    # at startup, instead of in front of the audience). Opt out with
+    # BEDROCK_PREWARM=0.
+    if os.environ.get("BEDROCK_PREWARM", "1") not in ("0", "false", "False"):
+        import threading
+        threading.Thread(target=_prewarm_bedrock, daemon=True).start()
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\n  Server stopped.")
+
+
+def _prewarm_bedrock():
+    """Warm the Bedrock prediction cache using the bundled sample CSV.
+
+    Runs in a background thread at server startup. After it completes, a
+    Predict request for the sample CSV is served instantly from cache.
+    """
+    try:
+        sample = Path(__file__).parent / "sample_activity_log.csv"
+        if not sample.exists():
+            return
+        from src.intelligence.csv_predictor import (
+            parse_and_validate,
+            predict,
+            derive_proactive_actions,
+        )
+        from src.intelligence.bedrock_predictor import predict_with_bedrock
+
+        rows, errors = parse_and_validate(sample.read_text())
+        if errors:
+            return
+        result = predict(rows)
+        stats = derive_proactive_actions(result["predictions"])
+        print("  ⏳ Pre-warming Bedrock prediction cache (sample CSV)...")
+        out = predict_with_bedrock(result["predictions"], stats)
+        if out.get("ai_enhanced"):
+            print(f"  ✅ Bedrock cache warm — sample CSV predictions ready ({out.get('model_id')}).")
+        else:
+            print(f"  ⚠️  Bedrock prewarm fell back to statistical ({out.get('model_reasoning','')[:80]}).")
+    except Exception as e:
+        print(f"  ⚠️  Bedrock prewarm skipped: {type(e).__name__}: {e}")
 
 
 # ============================================================

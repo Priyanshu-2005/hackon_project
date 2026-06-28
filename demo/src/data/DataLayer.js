@@ -11,7 +11,7 @@ export class DataLayer {
     /** @type {'mock' | 'real'} */
     this.mode = 'mock';
     this.mockProvider = new MockProvider();
-    this.apiProvider = new ApiProvider('http://localhost:8080');
+    this.apiProvider = new ApiProvider();
   }
 
   /**

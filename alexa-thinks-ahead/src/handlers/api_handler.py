@@ -62,6 +62,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         elif path == "/scenario/power-cut" and http_method == "POST":
             return handle_power_cut_scenario()
 
+        elif path == "/predict/events" and http_method == "POST":
+            return handle_predict_events(json.loads(body) if body else {})
+
         return response(404, {"error": "Not found"})
     except Exception as e:
         logger.error(f"API error: {e}")
@@ -185,6 +188,47 @@ def handle_power_cut_scenario() -> Dict:
     except Exception as e:
         logger.error(f"power-cut scenario error: {e}")
         return response(500, {"error": "scenario pipeline failed"})
+
+
+def handle_predict_events(body: Dict) -> Dict:
+    """Validate an uploaded CSV and predict today's events from it.
+
+    Expects ``body`` to contain a ``csv`` field with the raw CSV text.
+    Returns 400 with ``details`` when the CSV format is invalid, otherwise
+    200 with the predicted events.
+    """
+    from src.intelligence.csv_predictor import (
+        parse_and_validate,
+        predict,
+        derive_proactive_actions,
+    )
+    from src.intelligence.bedrock_predictor import predict_with_bedrock
+
+    csv_text = body.get("csv", "") if isinstance(body, dict) else ""
+    if not csv_text:
+        return response(400, {
+            "error": "Missing 'csv' field with the CSV content.",
+            "details": [],
+        })
+
+    rows, errors = parse_and_validate(csv_text)
+    if errors:
+        return response(400, {
+            "error": "CSV format is invalid.",
+            "details": errors,
+        })
+
+    result = predict(rows)
+    stats_actions = derive_proactive_actions(result["predictions"])
+
+    # Try Bedrock Claude for AI-enhanced predictions; falls back to stats.
+    bedrock_result = predict_with_bedrock(result["predictions"], stats_actions)
+    result["proactive_actions"] = bedrock_result["proactive_actions"]
+    result["ai_enhanced"] = bedrock_result["ai_enhanced"]
+    result["model_reasoning"] = bedrock_result["model_reasoning"]
+    result["model_id"] = bedrock_result["model_id"]
+
+    return response(200, result)
 
 
 def response(status_code: int, body: Dict) -> Dict:

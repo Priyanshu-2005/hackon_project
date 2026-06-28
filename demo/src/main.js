@@ -43,7 +43,7 @@ const floorPlan = new FloorPlan2D(document.getElementById('3d-container'));
 
 // --- UI setup ---
 const uiManager = new UIManager(stateStore, simulationEngine);
-const learningPanel = new LearningPanel(uiManager);
+const learningPanel = new LearningPanel(uiManager, eventBus, dataLayer);
 const deploymentPanel = new DeploymentPanel(uiManager, simulationEngine);
 const eventLog = new EventLog(stateStore);
 const trustGauges = new TrustGauges(stateStore);
@@ -172,6 +172,22 @@ eventBus.on(EVENTS.PROACTIVE_ACTION, (payload) => {
     : payload.name;
 
   floorPlan.showSpeechBubble(payload.targetDevice, text, 5000);
+});
+
+// 2b. On Deploy: if a CSV produced proactive actions, replace the hardcoded
+//     defaults so the simulation is driven by the uploaded household data.
+eventBus.on(EVENTS.PHASE_CHANGE, (payload) => {
+  if (
+    payload &&
+    payload.phase === 'deployment' &&
+    Array.isArray(payload.proactiveActions) &&
+    payload.proactiveActions.length > 0
+  ) {
+    eventScheduler.loadActions(payload.proactiveActions);
+    console.log(
+      `Loaded ${payload.proactiveActions.length} CSV-derived proactive actions into the scheduler.`
+    );
+  }
 });
 
 // 3. Data mode toggle button

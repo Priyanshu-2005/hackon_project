@@ -1,0 +1,66 @@
+/**
+ * Sample activity-log CSV embedded as a string so the Learning Panel can
+ * offer a "Download sample CSV" button without depending on a served file
+ * path. Mirrors demo/sample_activity_log_family2.csv.
+ */
+export const SAMPLE_CSV_FILENAME = 'sample_activity_log.csv';
+
+export const SAMPLE_CSV = `
+date,time,member,event_type,room,devices
+2026-06-15,05:42,Aarav,Wake up,Master Bedroom,Lights|Geyser
+2026-06-15,06:02,Aarav,Morning jog,Balcony,Lights
+2026-06-15,08:52,Aarav,Leave home,Balcony,Lock|Camera
+2026-06-15,19:08,Aarav,Arrive home,Balcony,Lock|AC|Lights
+2026-06-15,23:02,Aarav,Bedtime,Master Bedroom,AC|Lights
+2026-06-15,06:28,Meera,Wake up,Master Bedroom,Lights
+2026-06-15,07:28,Meera,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-15,10:03,Meera,Work from home,Study Room,Lights|AC|Echo
+2026-06-15,14:05,Meera,Afternoon rest,Living Room,AC
+2026-06-15,22:33,Meera,Bedtime,Master Bedroom,AC|Lights
+2026-06-15,07:02,Kabir,Wake up,Kids Room,Lights
+2026-06-15,10:01,Kabir,Online class,Study Room,Lights|AC|Echo
+2026-06-15,17:12,Kabir,Gaming,Living Room,TV|Lights
+2026-06-15,22:01,Kabir,Bedtime,Kids Room,Lights|AC
+2026-06-16,05:48,Aarav,Wake up,Master Bedroom,Lights|Geyser
+2026-06-16,06:05,Aarav,Morning jog,Balcony,Lights
+2026-06-16,08:58,Aarav,Leave home,Balcony,Lock|Camera
+2026-06-16,19:03,Aarav,Arrive home,Balcony,Lock|AC|Lights
+2026-06-16,22:58,Aarav,Bedtime,Master Bedroom,AC|Lights
+2026-06-16,06:33,Meera,Wake up,Master Bedroom,Lights
+2026-06-16,07:33,Meera,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-16,09:58,Meera,Work from home,Study Room,Lights|AC|Echo
+2026-06-16,13:58,Meera,Afternoon rest,Living Room,AC
+2026-06-16,22:28,Meera,Bedtime,Master Bedroom,AC|Lights
+2026-06-16,06:58,Kabir,Wake up,Kids Room,Lights
+2026-06-16,09:59,Kabir,Online class,Study Room,Lights|AC|Echo
+2026-06-16,17:18,Kabir,Gaming,Living Room,TV|Lights
+2026-06-16,21:58,Kabir,Bedtime,Kids Room,Lights|AC
+2026-06-17,05:44,Aarav,Wake up,Master Bedroom,Lights|Geyser
+2026-06-17,05:59,Aarav,Morning jog,Balcony,Lights
+2026-06-17,08:55,Aarav,Leave home,Balcony,Lock|Camera
+2026-06-17,19:12,Aarav,Arrive home,Balcony,Lock|AC|Lights
+2026-06-17,23:05,Aarav,Bedtime,Master Bedroom,AC|Lights
+2026-06-17,06:30,Meera,Wake up,Master Bedroom,Lights
+2026-06-17,07:30,Meera,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-17,10:05,Meera,Work from home,Study Room,Lights|AC|Echo
+2026-06-17,14:02,Meera,Afternoon rest,Living Room,AC
+2026-06-17,22:31,Meera,Bedtime,Master Bedroom,AC|Lights
+2026-06-17,07:05,Kabir,Wake up,Kids Room,Lights
+2026-06-17,10:02,Kabir,Online class,Study Room,Lights|AC|Echo
+2026-06-17,17:08,Kabir,Gaming,Living Room,TV|Lights
+2026-06-17,22:04,Kabir,Bedtime,Kids Room,Lights|AC
+2026-06-18,05:46,Aarav,Wake up,Master Bedroom,Lights|Geyser
+2026-06-18,06:03,Aarav,Morning jog,Balcony,Lights
+2026-06-18,08:50,Aarav,Leave home,Balcony,Lock|Camera
+2026-06-18,18:58,Aarav,Arrive home,Balcony,Lock|AC|Lights
+2026-06-18,23:00,Aarav,Bedtime,Master Bedroom,AC|Lights
+2026-06-18,06:31,Meera,Wake up,Master Bedroom,Lights
+2026-06-18,07:27,Meera,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-18,10:00,Meera,Work from home,Study Room,Lights|AC|Echo
+2026-06-18,14:00,Meera,Afternoon rest,Living Room,AC
+2026-06-18,22:30,Meera,Bedtime,Master Bedroom,AC|Lights
+2026-06-18,07:00,Kabir,Wake up,Kids Room,Lights
+2026-06-18,10:00,Kabir,Online class,Study Room,Lights|AC|Echo
+2026-06-18,17:15,Kabir,Gaming,Living Room,TV|Lights
+2026-06-18,22:00,Kabir,Bedtime,Kids Room,Lights|AC
+`;

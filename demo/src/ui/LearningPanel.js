@@ -1,48 +1,18 @@
 import { eventBus as defaultEventBus, EVENTS } from '../utils/eventBus.js';
+import { predictFromCsv } from '../data/csvPredict.js';
+import { SAMPLE_CSV, SAMPLE_CSV_FILENAME } from '../data/sampleCsv.js';
 
 /**
- * Family members available in the event form.
+ * Family members shown first (in this order) in the learned-routines list.
+ * Any other member found in an uploaded CSV is appended after these.
  */
 const FAMILY_MEMBERS = ['Rajesh', 'Priya', 'Arjun', 'Ananya', 'Dadaji', 'Dadiji'];
 
 /**
- * Event type options for the form.
- */
-const EVENT_TYPES = [
-  'Wake up',
-  'Leave home',
-  'Arrive home',
-  'Start cooking',
-  'Online class',
-  'Afternoon rest',
-  'TV time',
-  'Bedtime',
-  'Custom',
-];
-
-/**
- * Room options for the form.
- */
-const ROOMS = [
-  'Living Room',
-  'Kitchen',
-  'Master Bedroom',
-  'Kids Room',
-  'Study Room',
-  'Bathroom',
-  'Balcony',
-];
-
-/**
- * Device options for the multi-select checkboxes.
- */
-const DEVICES = ['AC', 'Lights', 'Geyser', 'TV', 'Lock', 'Camera', 'Purifier', 'Kitchen Hub', 'Echo'];
-
-/**
- * Default events representing typical Sharma family routines.
- * Pre-populated in the Learning Phase for immediate demonstration.
- *
- * Requirements: 4.4
+ * Default learned routines representing the Sharma family's typical week.
+ * These are the "mock" routines Alexa shows before any CSV is uploaded — they
+ * are fully visible in the Learning Phase and get replaced by the predictions
+ * derived from an uploaded activity log.
  */
 const DEFAULT_EVENTS = [
   // Rajesh
@@ -79,28 +49,40 @@ const DEFAULT_EVENTS = [
 ];
 
 /**
- * LearningPanel manages the event configuration form in the Learning Phase.
- * Users can add, view, and remove household events before deploying the simulation.
+ * LearningPanel — Learning Phase UI.
  *
- * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+ * Instead of a manual event-entry form, Alexa shows the household routines it
+ * has "learned" (the mock defaults) and lets the user upload last week's
+ * activity log (CSV). The CSV is sent to Amazon Bedrock (real mode) — or
+ * analyzed on-device as a fallback — to predict today's routines and derive
+ * the proactive actions Alexa will take during the Deployment Phase.
+ *
+ * Requirements: 4.1, 4.4, 4.5, 4.6
  */
 export class LearningPanel {
   /**
-   * @param {import('./UIManager.js').UIManager} uiManager — receives the UIManager to call deploy()
-   * @param {import('../utils/eventBus.js').EventBus} [eventBusInstance] — optional eventBus instance (defaults to singleton)
+   * @param {import('./UIManager.js').UIManager} uiManager — used to call deploy()
+   * @param {import('../utils/eventBus.js').EventBus} [eventBusInstance]
+   * @param {import('../data/DataLayer.js').DataLayer} [dataLayer] — for real-mode
+   *   CSV prediction via the backend; optional (falls back to on-device prediction).
    */
-  constructor(uiManager, eventBusInstance) {
+  constructor(uiManager, eventBusInstance, dataLayer) {
     this.uiManager = uiManager;
     this.eventBus = eventBusInstance || defaultEventBus;
-    /** @type {Array<{id: string, member: string, type: string, time: string, room: string, devices: string[], customLabel?: string}>} */
+    this.dataLayer = dataLayer || null;
+
+    /** @type {Array<{id: string, member: string, type: string, time: string, room: string, devices: string[]}>} */
     this.events = [...DEFAULT_EVENTS];
+
+    /** @type {Array<object>} Proactive actions derived from an uploaded CSV (empty until upload). */
+    this.proactiveActions = [];
+
     this.render();
     this.bindEvents();
   }
 
   /**
-   * Add a new event to the list, render it, and emit EVENT_ADDED.
-   * @param {{member: string, type: string, time: string, room: string, devices: string[], customLabel?: string}} eventData
+   * Add a routine to the list (kept for programmatic use / tests).
    */
   addEvent(eventData) {
     const event = {
@@ -114,12 +96,11 @@ export class LearningPanel {
   }
 
   /**
-   * Remove an event by its id, re-render the list, and emit EVENT_REMOVED.
-   * @param {string} id
+   * Remove a routine by id (kept for programmatic use / tests).
    */
   removeEvent(id) {
-    const removed = this.events.find(e => e.id === id);
-    this.events = this.events.filter(e => e.id !== id);
+    const removed = this.events.find((e) => e.id === id);
+    this.events = this.events.filter((e) => e.id !== id);
     this.renderEventList();
     this.updateCounter();
     if (removed) {
@@ -128,144 +109,93 @@ export class LearningPanel {
   }
 
   /**
-   * Render the full panel HTML inside `#learning-phase .panel-content`
-   * (rebuilds the inner HTML of the #event-form container).
+   * Render the panel header + CSV upload section into #event-form.
    */
   render() {
-    const panelContent = document.querySelector('#learning-phase .panel-content') || document.getElementById('event-form')?.parentElement;
     const formEl = document.getElementById('event-form');
     if (!formEl) return;
 
-    const uniqueMembers = new Set(this.events.map(e => e.member)).size;
+    const uniqueMembers = new Set(this.events.map((e) => e.member)).size;
 
     formEl.innerHTML = `
       <div class="learning-panel-header">
-        <h3>Configure Household Events</h3>
+        <h3>Alexa is learning your household</h3>
         <p id="routine-counter" class="routine-counter">Alexa has learned ${this.events.length} routines for ${uniqueMembers} family members</p>
       </div>
-      <form id="add-event-form" class="event-form">
-        <div class="form-row">
-          <div class="field-group">
-            <label class="field-label">Family Member</label>
-            <select name="member" required aria-label="Family member">
-              <option value="">Select...</option>
-              ${FAMILY_MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('')}
-            </select>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Event Type</label>
-            <select name="eventType" required aria-label="Event type">
-              <option value="">Select...</option>
-              ${EVENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="field-group">
-            <label class="field-label">Time</label>
-            <input type="time" name="time" required aria-label="Event time" value="07:00" />
-          </div>
-          <div class="field-group">
-            <label class="field-label">Room</label>
-            <select name="room" required aria-label="Room">
-              <option value="">Select...</option>
-              ${ROOMS.map(r => `<option value="${r}">${r}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div class="form-row devices-row">
-          <label class="devices-label">Devices Involved</label>
-          <div class="devices-checkboxes">
-            ${DEVICES.map(d => `
-              <label class="device-checkbox">
-                <input type="checkbox" name="devices" value="${d}" />
-                <span>${d}</span>
-              </label>
-            `).join('')}
-          </div>
-        </div>
-        <button type="submit" class="btn-accent">+ Add Event</button>
-      </form>
 
-      <div class="special-events-section">
-        <h4>⚡ Special Events</h4>
-        <div class="special-event-row">
-          <label>Power Cut</label>
-          <input type="time" id="special-powercut-time" aria-label="Power cut time" value="17:40" />
-          <input type="number" id="special-powercut-duration" aria-label="Power cut duration (minutes)" placeholder="Duration (min)" min="1" max="180" value="50" />
-          <button type="button" class="btn-special" data-special="power-cut">Add</button>
+      <div class="csv-upload-section">
+        <h4>📂 Upload last week's activity log</h4>
+        <p class="csv-help">
+          Alexa sends your household's previous-week routine to Amazon Bedrock to
+          predict today's events and decide what to do <em>ahead of time</em>.
+        </p>
+        <details class="csv-format">
+          <summary>CSV format</summary>
+          <ul>
+            <li>Columns: <code>date, time, member, event_type, room, devices</code></li>
+            <li><code>date</code> = YYYY-MM-DD (last 7 days), <code>time</code> = HH:MM</li>
+            <li><code>devices</code> is optional, pipe-separated e.g. <code>Lights|Geyser</code></li>
+          </ul>
+          <code class="csv-example">date,time,member,event_type,room,devices
+2026-06-13,06:00,Priya,Wake up,Master Bedroom,Lights|Geyser
+2026-06-13,08:00,Rajesh,Leave home,Balcony,Lock|Camera</code>
+        </details>
+        <div class="csv-controls">
+          <input type="file" id="csv-file-input" accept=".csv,text/csv" aria-label="Activity log CSV file" />
+          <button type="button" id="csv-analyze-btn" class="btn-ghost">Analyze with Bedrock</button>
         </div>
-        <div class="special-event-row">
-          <label>Guest Arriving</label>
-          <input type="time" id="special-guest-time" aria-label="Guest arrival time" value="16:00" />
-          <button type="button" class="btn-special" data-special="guest-arriving">Add</button>
-        </div>
-        <div class="special-event-row">
-          <label>Heavy Rain / Storm</label>
-          <input type="time" id="special-rain-time" aria-label="Heavy rain time" value="14:00" />
-          <button type="button" class="btn-special" data-special="heavy-rain">Add</button>
-        </div>
+        <button type="button" id="csv-download-btn" class="csv-sample-link">⬇ Download sample CSV</button>
+        <div id="csv-status" class="csv-status csv-status-info"></div>
       </div>
+
+      <h4 class="routines-heading">Learned routines</h4>
     `;
 
     this.renderEventList();
   }
 
   /**
-   * Render the #event-list div with all events grouped by family member,
-   * each with a remove button.
+   * Render the learned routines into #event-list, grouped by family member
+   * and sorted by time. Shows a confidence badge when available (from a CSV).
    */
   renderEventList() {
     const listEl = document.getElementById('event-list');
     if (!listEl) return;
 
     if (this.events.length === 0) {
-      listEl.innerHTML = '<p class="event-list-empty">No events configured. Add some above.</p>';
+      listEl.innerHTML = '<p class="event-list-empty">No routines learned yet.</p>';
       return;
     }
 
-    // Group events by family member
+    // Group by member; keep FAMILY_MEMBERS order, then any extra members found.
     const grouped = {};
     for (const evt of this.events) {
-      if (!grouped[evt.member]) grouped[evt.member] = [];
-      grouped[evt.member].push(evt);
+      (grouped[evt.member] = grouped[evt.member] || []).push(evt);
     }
+    const extras = Object.keys(grouped).filter((m) => !FAMILY_MEMBERS.includes(m)).sort();
+    const memberOrder = [...FAMILY_MEMBERS, ...extras];
 
     let html = '';
-    for (const member of FAMILY_MEMBERS) {
-      if (!grouped[member] || grouped[member].length === 0) continue;
+    for (const member of memberOrder) {
+      const items = grouped[member];
+      if (!items || items.length === 0) continue;
+      items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
       html += `<div class="event-group">
         <h4 class="event-group-title">${member}</h4>`;
-      for (const evt of grouped[member]) {
-        const typeLabel = evt.type === 'Custom' && evt.customLabel
-          ? `Custom/${evt.customLabel}`
-          : evt.type;
+      for (const evt of items) {
+        const typeLabel = evt.type === 'Custom' && evt.customLabel ? `Custom/${evt.customLabel}` : evt.type;
+        const conf = typeof evt.confidence === 'number'
+          ? `<span class="event-confidence" title="Pattern confidence">${Math.round(evt.confidence * 100)}%</span>`
+          : '';
         html += `<div class="event-item" data-id="${evt.id}">
           <div class="event-item-info">
             <span class="event-time">${evt.time}</span>
             <span class="event-type">${typeLabel}</span>
             <span class="event-room">${evt.room}</span>
-            <span class="event-devices">${evt.devices.join(', ')}</span>
+            <span class="event-devices">${(evt.devices || []).join(', ')}</span>
           </div>
-          <button class="event-remove-btn" data-id="${evt.id}" title="Remove event" aria-label="Remove event">✕</button>
-        </div>`;
-      }
-      html += '</div>';
-    }
-
-    // Also show special events (not grouped by member)
-    const specialEvents = this.events.filter(e => e.member === 'Special');
-    if (specialEvents.length > 0) {
-      html += `<div class="event-group">
-        <h4 class="event-group-title">⚡ Special Events</h4>`;
-      for (const evt of specialEvents) {
-        const durationStr = evt.duration ? ` (${evt.duration} min)` : '';
-        html += `<div class="event-item special" data-id="${evt.id}">
-          <div class="event-item-info">
-            <span class="event-time">${evt.time}</span>
-            <span class="event-type">${evt.type}${durationStr}</span>
-          </div>
-          <button class="event-remove-btn" data-id="${evt.id}" title="Remove event" aria-label="Remove event">✕</button>
+          ${conf}
         </div>`;
       }
       html += '</div>';
@@ -275,110 +205,165 @@ export class LearningPanel {
   }
 
   /**
-   * Update the counter display: "Alexa has learned X routines for Y family members"
+   * Update the "Alexa has learned X routines for Y family members" counter.
    */
   updateCounter() {
     const counterEl = document.getElementById('routine-counter');
     if (!counterEl) return;
-    const uniqueMembers = new Set(this.events.filter(e => e.member !== 'Special').map(e => e.member)).size;
+    const uniqueMembers = new Set(this.events.map((e) => e.member)).size;
     counterEl.textContent = `Alexa has learned ${this.events.length} routines for ${uniqueMembers} family members`;
   }
 
   /**
-   * Bind form submit, special event buttons, and deploy button events.
+   * Set the CSV status line text + style.
+   * @param {string} html
+   * @param {'info'|'success'|'error'} kind
+   */
+  _setStatus(html, kind = 'info') {
+    const el = document.getElementById('csv-status');
+    if (!el) return;
+    el.className = `csv-status csv-status-${kind}`;
+    el.innerHTML = html;
+  }
+
+  /**
+   * Convert backend/local predictions into the routine shape this panel renders.
+   * @param {Array} predictions
+   */
+  _predictionsToEvents(predictions) {
+    return predictions.map((p, i) => ({
+      id: 'pred-' + i,
+      member: p.member,
+      type: p.event_type,
+      time: p.predicted_time || p.time || '--:--',
+      room: p.room,
+      devices: p.devices || [],
+      confidence: typeof p.confidence === 'number' ? p.confidence : undefined,
+    }));
+  }
+
+  /**
+   * Trigger a download of the bundled sample activity-log CSV so users can see
+   * the expected format (and try the upload flow immediately).
+   */
+  _downloadSample() {
+    const blob = new Blob([SAMPLE_CSV], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = SAMPLE_CSV_FILENAME;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Read the selected CSV and predict today's routines + proactive actions.
+   * Real mode → backend (Amazon Bedrock); otherwise (or on failure) → on-device.
+   */
+  async _analyzeCsv() {
+    const input = document.getElementById('csv-file-input');
+    const file = input && input.files && input.files[0];
+    if (!file) {
+      this._setStatus('Choose a CSV file first.', 'error');
+      return;
+    }
+
+    this._setStatus('⏳ Analyzing your routines with Amazon Bedrock…', 'info');
+
+    let text;
+    try {
+      text = await file.text();
+    } catch (_) {
+      this._setStatus('Could not read the selected file.', 'error');
+      return;
+    }
+
+    let result = null;
+    let usedBackend = false;
+    const useReal = this.dataLayer && this.dataLayer.mode === 'real' && this.dataLayer.apiProvider;
+
+    if (useReal) {
+      try {
+        result = await this.dataLayer.apiProvider.predictEventsFromCsv(text);
+        usedBackend = true;
+      } catch (err) {
+        console.warn('Backend prediction failed, falling back to on-device prediction:', err);
+      }
+    }
+
+    if (!result) {
+      try {
+        result = predictFromCsv(text);
+      } catch (err) {
+        this._setStatus(`Could not parse CSV: ${err.message}`, 'error');
+        return;
+      }
+    }
+
+    if (result.errors && result.errors.length) {
+      const items = result.errors.slice(0, 6).map((e) => `<li>${e}</li>`).join('');
+      this._setStatus(`CSV could not be used:<ul>${items}</ul>`, 'error');
+      return;
+    }
+
+    const predictions = result.predictions || [];
+    if (!predictions.length) {
+      this._setStatus('No recurring routines found in this CSV.', 'error');
+      return;
+    }
+
+    // Replace the visible learned routines + store proactive actions for deploy.
+    this.events = this._predictionsToEvents(predictions);
+    this.proactiveActions = result.proactive_actions || [];
+    this.renderEventList();
+    this.updateCounter();
+
+    const engine = result.ai_enhanced
+      ? 'Amazon Bedrock (Claude)'
+      : (usedBackend ? 'the statistical model' : 'on-device analysis');
+    this._setStatus(
+      `✅ Learned <strong>${predictions.length}</strong> routines from ` +
+      `<strong>${result.days_analyzed || '?'}</strong> days of history — powered by ${engine}. ` +
+      `Press <strong>Deploy</strong> to watch Alexa think ahead.`,
+      'success'
+    );
+  }
+
+  /**
+   * Wire the CSV analyze button and the Deploy button.
    */
   bindEvents() {
-    // Form submission — delegated on #event-form container
-    const formEl = document.getElementById('event-form');
-    if (formEl) {
-      formEl.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const form = document.getElementById('add-event-form');
-        if (!form) return;
-
-        const formData = new FormData(form);
-        const member = formData.get('member');
-        const type = formData.get('eventType');
-        const time = formData.get('time');
-        const room = formData.get('room');
-
-        // Collect checked devices
-        const devices = [];
-        form.querySelectorAll('input[name="devices"]:checked').forEach(cb => {
-          devices.push(cb.value);
-        });
-
-        if (!member || !type || !time || !room) return;
-
-        this.addEvent({ member, type, time, room, devices });
-        form.reset();
-      });
-
-      // Special events buttons
-      formEl.addEventListener('click', (e) => {
-        const specialBtn = e.target.closest('.btn-special');
-        if (!specialBtn) return;
-
-        const specialType = specialBtn.dataset.special;
-        if (specialType === 'power-cut') {
-          const time = document.getElementById('special-powercut-time')?.value || '17:40';
-          const duration = parseInt(document.getElementById('special-powercut-duration')?.value) || 50;
-          this.addEvent({
-            member: 'Special',
-            type: 'Power Cut',
-            time,
-            room: 'Living Room',
-            devices: ['AC', 'Lights', 'TV', 'Kitchen Hub'],
-            duration,
-          });
-        } else if (specialType === 'guest-arriving') {
-          const time = document.getElementById('special-guest-time')?.value || '16:00';
-          this.addEvent({
-            member: 'Special',
-            type: 'Guest Arriving',
-            time,
-            room: 'Living Room',
-            devices: ['AC', 'Lights', 'Lock', 'Camera'],
-          });
-        } else if (specialType === 'heavy-rain') {
-          const time = document.getElementById('special-rain-time')?.value || '14:00';
-          this.addEvent({
-            member: 'Special',
-            type: 'Heavy Rain / Storm',
-            time,
-            room: 'Balcony',
-            devices: ['Lock', 'Camera', 'Lights'],
-          });
-        }
-      });
+    const analyzeBtn = document.getElementById('csv-analyze-btn');
+    if (analyzeBtn) {
+      analyzeBtn.addEventListener('click', () => this._analyzeCsv());
     }
 
-    // Remove event — delegated click handler on event list
-    const listEl = document.getElementById('event-list');
-    if (listEl) {
-      listEl.addEventListener('click', (e) => {
-        const removeBtn = e.target.closest('.event-remove-btn');
-        if (removeBtn) {
-          e.preventDefault();
-          this.removeEvent(removeBtn.dataset.id);
-        }
-      });
+    const downloadBtn = document.getElementById('csv-download-btn');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => this._downloadSample());
     }
 
-    // Deploy button — calls uiManager.deploy() and emits phase change
+    // Deploy → transition phase and hand the derived proactive actions to the
+    // scheduler (main.js loads payload.proactiveActions when present).
     const deployBtn = document.getElementById('deploy-btn');
     if (deployBtn) {
       deployBtn.addEventListener('click', () => {
         if (this.uiManager) {
           this.uiManager.deploy();
         }
-        this.eventBus.emit(EVENTS.PHASE_CHANGE, { phase: 'deployment', events: this.events });
+        this.eventBus.emit(EVENTS.PHASE_CHANGE, {
+          phase: 'deployment',
+          events: this.events,
+          proactiveActions: this.proactiveActions,
+        });
       });
     }
   }
 
   /**
-   * Returns the current list of configured events.
+   * Returns the current list of learned routines.
    * @returns {Array}
    */
   getEvents() {

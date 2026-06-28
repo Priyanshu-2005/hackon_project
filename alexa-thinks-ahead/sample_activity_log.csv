@@ -1,0 +1,89 @@
+date,time,member,event_type,room,devices
+2026-06-13,06:27,Rajesh,Wake up,Master Bedroom,Lights|Geyser
+2026-06-13,07:57,Rajesh,Leave home,Balcony,Lock|Camera
+2026-06-13,18:27,Rajesh,Arrive home,Balcony,Lock|AC|Lights
+2026-06-13,22:57,Rajesh,Bedtime,Master Bedroom,AC|Lights
+2026-06-13,05:57,Priya,Wake up,Master Bedroom,Lights|Geyser
+2026-06-13,06:57,Priya,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-13,11:57,Priya,Start cooking,Kitchen,Kitchen Hub
+2026-06-13,22:27,Priya,Bedtime,Master Bedroom,AC|Lights
+2026-06-13,06:57,Arjun,Wake up,Kids Room,Lights
+2026-06-13,15:57,Arjun,Online class,Study Room,Lights|AC|Echo
+2026-06-13,21:57,Arjun,Bedtime,Kids Room,Lights|AC
+2026-06-13,05:57,Dadaji,Wake up,Master Bedroom,Lights
+2026-06-13,12:57,Dadaji,Afternoon rest,Living Room,AC|Lights
+2026-06-13,21:27,Dadaji,Bedtime,Master Bedroom,AC|Lights
+2026-06-13,07:27,Ananya,Wake up,Kids Room,Lights
+2026-06-13,14:57,Ananya,TV time,Living Room,TV|Lights
+2026-06-13,20:57,Ananya,Bedtime,Kids Room,Lights|AC
+2026-06-12,06:32,Rajesh,Wake up,Master Bedroom,Lights|Geyser
+2026-06-12,08:02,Rajesh,Leave home,Balcony,Lock|Camera
+2026-06-12,18:32,Rajesh,Arrive home,Balcony,Lock|AC|Lights
+2026-06-12,23:02,Rajesh,Bedtime,Master Bedroom,AC|Lights
+2026-06-12,06:02,Priya,Wake up,Master Bedroom,Lights|Geyser
+2026-06-12,07:02,Priya,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-12,12:02,Priya,Start cooking,Kitchen,Kitchen Hub
+2026-06-12,22:32,Priya,Bedtime,Master Bedroom,AC|Lights
+2026-06-12,07:02,Arjun,Wake up,Kids Room,Lights
+2026-06-12,16:02,Arjun,Online class,Study Room,Lights|AC|Echo
+2026-06-12,22:02,Arjun,Bedtime,Kids Room,Lights|AC
+2026-06-12,06:02,Dadaji,Wake up,Master Bedroom,Lights
+2026-06-12,13:02,Dadaji,Afternoon rest,Living Room,AC|Lights
+2026-06-12,21:32,Dadaji,Bedtime,Master Bedroom,AC|Lights
+2026-06-12,07:32,Ananya,Wake up,Kids Room,Lights
+2026-06-12,15:02,Ananya,TV time,Living Room,TV|Lights
+2026-06-12,21:02,Ananya,Bedtime,Kids Room,Lights|AC
+2026-06-11,06:25,Rajesh,Wake up,Master Bedroom,Lights|Geyser
+2026-06-11,07:55,Rajesh,Leave home,Balcony,Lock|Camera
+2026-06-11,18:25,Rajesh,Arrive home,Balcony,Lock|AC|Lights
+2026-06-11,22:55,Rajesh,Bedtime,Master Bedroom,AC|Lights
+2026-06-11,05:55,Priya,Wake up,Master Bedroom,Lights|Geyser
+2026-06-11,06:55,Priya,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-11,11:55,Priya,Start cooking,Kitchen,Kitchen Hub
+2026-06-11,22:25,Priya,Bedtime,Master Bedroom,AC|Lights
+2026-06-11,06:55,Arjun,Wake up,Kids Room,Lights
+2026-06-11,15:55,Arjun,Online class,Study Room,Lights|AC|Echo
+2026-06-11,21:55,Arjun,Bedtime,Kids Room,Lights|AC
+2026-06-11,05:55,Dadaji,Wake up,Master Bedroom,Lights
+2026-06-11,12:55,Dadaji,Afternoon rest,Living Room,AC|Lights
+2026-06-11,21:25,Dadaji,Bedtime,Master Bedroom,AC|Lights
+2026-06-11,07:25,Ananya,Wake up,Kids Room,Lights
+2026-06-11,14:55,Ananya,TV time,Living Room,TV|Lights
+2026-06-11,20:55,Ananya,Bedtime,Kids Room,Lights|AC
+2026-06-10,06:35,Rajesh,Wake up,Master Bedroom,Lights|Geyser
+2026-06-10,08:05,Rajesh,Leave home,Balcony,Lock|Camera
+2026-06-10,18:35,Rajesh,Arrive home,Balcony,Lock|AC|Lights
+2026-06-10,23:05,Rajesh,Bedtime,Master Bedroom,AC|Lights
+2026-06-10,06:05,Priya,Wake up,Master Bedroom,Lights|Geyser
+2026-06-10,07:05,Priya,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-10,12:05,Priya,Start cooking,Kitchen,Kitchen Hub
+2026-06-10,22:35,Priya,Bedtime,Master Bedroom,AC|Lights
+2026-06-10,07:05,Arjun,Wake up,Kids Room,Lights
+2026-06-10,16:05,Arjun,Online class,Study Room,Lights|AC|Echo
+2026-06-10,22:05,Arjun,Bedtime,Kids Room,Lights|AC
+2026-06-10,06:05,Dadaji,Wake up,Master Bedroom,Lights
+2026-06-10,13:05,Dadaji,Afternoon rest,Living Room,AC|Lights
+2026-06-10,21:35,Dadaji,Bedtime,Master Bedroom,AC|Lights
+2026-06-10,07:35,Ananya,Wake up,Kids Room,Lights
+2026-06-10,15:05,Ananya,TV time,Living Room,TV|Lights
+2026-06-10,21:05,Ananya,Bedtime,Kids Room,Lights|AC
+2026-06-09,06:30,Rajesh,Wake up,Master Bedroom,Lights|Geyser
+2026-06-09,08:00,Rajesh,Leave home,Balcony,Lock|Camera
+2026-06-09,18:30,Rajesh,Arrive home,Balcony,Lock|AC|Lights
+2026-06-09,23:00,Rajesh,Bedtime,Master Bedroom,AC|Lights
+2026-06-09,06:00,Priya,Wake up,Master Bedroom,Lights|Geyser
+2026-06-09,07:00,Priya,Start cooking,Kitchen,Kitchen Hub|Lights
+2026-06-09,12:00,Priya,Start cooking,Kitchen,Kitchen Hub
+2026-06-09,22:30,Priya,Bedtime,Master Bedroom,AC|Lights
+2026-06-09,07:00,Arjun,Wake up,Kids Room,Lights
+2026-06-09,16:00,Arjun,Online class,Study Room,Lights|AC|Echo
+2026-06-09,22:00,Arjun,Bedtime,Kids Room,Lights|AC
+2026-06-09,06:00,Dadaji,Wake up,Master Bedroom,Lights
+2026-06-09,13:00,Dadaji,Afternoon rest,Living Room,AC|Lights
+2026-06-09,21:30,Dadaji,Bedtime,Master Bedroom,AC|Lights
+2026-06-09,07:30,Ananya,Wake up,Kids Room,Lights
+2026-06-09,15:00,Ananya,TV time,Living Room,TV|Lights
+2026-06-09,21:00,Ananya,Bedtime,Kids Room,Lights|AC
+2026-06-11,16:30,Ananya,Birthday party,Living Room,TV|Lights|Echo
+2026-06-13,10:30,Priya,Doctor visit,Balcony,Lock
+2026-06-10,19:00,Rajesh,Movie night,Living Room,TV|AC|Lights

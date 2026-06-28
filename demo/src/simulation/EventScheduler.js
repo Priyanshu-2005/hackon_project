@@ -39,7 +39,7 @@ export class EventScheduler {
   loadActions(actions) {
     this.scheduledActions = actions.map((a) => ({
       ...a,
-      id: a.id || crypto.randomUUID(),
+      id: a.id || ('act-' + Date.now() + '-' + Math.random().toString(36).slice(2)),
     }));
     this.firedActions.clear();
   }

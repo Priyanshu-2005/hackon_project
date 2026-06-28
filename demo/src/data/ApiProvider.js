@@ -5,7 +5,7 @@
  */
 function envValue(key, fallback) {
   try {
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key] !== undefined) {
       return import.meta.env[key];
     }
   } catch (_) {
@@ -63,7 +63,21 @@ export class ApiProvider {
     }
     const response = await fetch(`${this.baseUrl}${this.apiPrefix}${path}`, options);
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      // Try to surface the backend's structured error (message + details).
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_) {
+        // non-JSON error body
+      }
+      const err = new Error(
+        (payload && payload.error) ? payload.error : `API error: ${response.status}`
+      );
+      err.status = response.status;
+      if (payload && payload.details) {
+        err.details = payload.details;
+      }
+      throw err;
     }
     return response.json();
   }
@@ -156,5 +170,15 @@ export class ApiProvider {
    */
   async runPowerCutScenario() {
     return this.request('POST', '/scenario/power-cut', {});
+  }
+
+  /**
+   * Upload a CSV of the previous week's activity log and get predicted
+   * events for today. The backend validates the CSV format first.
+   * @param {string} csvText - Raw CSV file content.
+   * @returns {Promise<{predictions: Array, days_analyzed: number, rows_analyzed: number}>}
+   */
+  async predictEventsFromCsv(csvText) {
+    return this.request('POST', '/predict/events', { csv: csvText });
   }
 }
